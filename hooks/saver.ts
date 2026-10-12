@@ -19,7 +19,7 @@ const CACHE_READ_PRICE = 0.1 // cache reads bill at 10% of input
 const HANDOFF_DAYS = 7
 const MANY_FILES = 1000 // a gitignored folder this big is flagged like node_modules
 // Generated folders the read guards block, so the startup check never flags them.
-export const HEAVY = ['node_modules', '__pycache__', '.venv', 'venv', '.next', 'coverage', 'dist', 'build', 'target']
+export const HEAVY = ['node_modules', '__pycache__', '.venv', 'venv', '.next', 'coverage', 'dist', 'build', 'target', '.gradle', 'obj', '.dart_tool', 'Pods', 'vendor']
 
 // Clawd as on Claude Code's welcome banner: head with two eye cells, body (arms down, arms up), legs.
 const PET_HEAD = (eyes: string) => ` ▐${eyes[0]}███${eyes[1]}▌`

@@ -36,7 +36,7 @@ Upgrading from an older version? Run `/saver-setup --yes`. It removes the old st
 | [Status line](#status-line) | Context, usage limits with a run-out forecast, prompt cache countdown. Hints `/compact` before auto-compact, `/handoff /clear` once the cache is cold | Mod | Always on |
 | [Auto-compact at 50%](#auto-compact) | Compacts at half the window instead of near full | settings | Automatic |
 | [Output trim](#output-trim) | Cuts a 2k+ token shell output to its head, error lines and tail before Claude reads it | Mod | Automatic |
-| [Folder guard](#folder-guard) | Claude never reads `node_modules`, `__pycache__`, `.venv`, `venv`, `.next`, `coverage`, `dist`, `build` or `target`, not even through the shell | Mod | Automatic |
+| [Folder guard](#folder-guard) | Claude never reads `node_modules`, `__pycache__`, `.venv`, `venv`, `.next`, `coverage`, `dist`, `build`, `target`, `.gradle`, `obj`, `.dart_tool`, `Pods` or `vendor`, not even through the shell | Mod | Automatic |
 | [Read guards](#read-guards) | Skips whole reads of lockfiles, minified and huge files (`cat big.log` too), and answers re-reads of unchanged files itself | Mod | Automatic |
 | [Secret guard](#secret-guard) | Blocks reading `.env` files and writing hardcoded API keys | Mod + settings | Automatic |
 | [Focus mode](#focus-mode) | Hides tool calls and Claude's in-between text; a box above the prompt shows the task, its steps and what is left (kept after Esc), then the final summary. Subagents get a row each: type, task and what they are doing now, ✓ when done. Claude's first edit or command in a task is refused once until it writes steps; when the session has no TaskCreate or TodoWrite, the mod adds its own `steps` tool. `ctrl+o` shows everything | Mod | Automatic |
@@ -132,7 +132,7 @@ The [startup check](#startup-check) names the worst repeat offender, so the fix 
 
 ### Folder guard
 
-`node_modules`, `__pycache__`, `.venv`, `venv`, `.next`, `coverage`, `dist`, `build` and `target` are blocked for Read, Grep, Glob
+`node_modules`, `__pycache__`, `.venv`, `venv`, `.next`, `coverage`, `dist`, `build`, `target`, `.gradle`, `obj` (.NET), `.dart_tool` (Flutter), `Pods` and `vendor` (Composer) are blocked for Read, Grep, Glob
 and shell reads (`cat`, `ls`, `grep`, `find`, `Get-Content`, `Get-ChildItem` ...).
 Other commands pass, so `rm -rf node_modules` still runs, and so do exclusions like `--exclude-dir=node_modules`.
 
