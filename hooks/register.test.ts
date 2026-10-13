@@ -153,7 +153,8 @@ test('SessionStart shows the /handoff note once, on startup and /clear only', as
   on('fs.write', (_$, e) => { const k = key(e.path); if (k) files[k] = e.text; return { value: undefined } })
   on('fs.stat', (_$, e) => (key(e.path) ? { value: { kind: 'file', size: 1, mtimeMs: 0, isLink: false } } : { deny: 'ENOENT' }))
   on('fs.list', () => ({ deny: 'ENOENT' }))
-  on('session.cwd', () => ({ value: '/proj' }))
+  let dir = '/proj'
+  on('session.cwd', () => ({ value: dir }))
   on('classic.SessionStart', () => ({})) // the settings hooks beneath
   const first = await $.classic.SessionStart({ source: 'clear' })
   expect(first.additionalContext).toEqual(['claude-saver: handoff note from the last session (from /handoff):\nGoal: ship it'])
@@ -161,4 +162,7 @@ test('SessionStart shows the /handoff note once, on startup and /clear only', as
   expect((await $.classic.SessionStart({ source: 'clear' })).additionalContext).toBeUndefined()
   files['handoff/-proj.md'] = 'Goal: again'
   expect((await $.classic.SessionStart({ source: 'resume' })).additionalContext).toBeUndefined()
+  // A `cd` mid-session must not move the note to another project's file.
+  dir = '/proj/sub'
+  expect((await $.classic.SessionStart({ source: 'clear' })).additionalContext).toEqual(['claude-saver: handoff note from the last session (from /handoff):\nGoal: again'])
 })

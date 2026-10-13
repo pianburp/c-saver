@@ -299,7 +299,8 @@ export const register: Register = on => {
       case 'saver-setup': return { text: args.includes('--help') ? USAGE : await setup(io($), args) }
     }
     const task = MODEL_COMMANDS[e.command]!
-    const text = e.command === 'token-audit' ? await audit(io($), cwd) : await handoffPath(io($), cwd)
+    // The note goes under the folder the session started in: a later `cd` would hide it from the next session.
+    const text = e.command === 'token-audit' ? await audit(io($), cwd) : await handoffPath(io($), live.sess.cwd ?? cwd)
     // A submit inside command.run would wait on itself; a clock callback is a later event.
     $.clock.after(0, () => void $.prompt.submit({ text: task[1](text) }))
     return {}
@@ -309,9 +310,9 @@ export const register: Register = on => {
   on('classic.SessionStart', async ($, e, next) => {
     const ran = await next(e)
     if (e.source === 'startup' || e.source === 'clear' || !live.sess.transcript)
-      live.sess = { transcript: e.transcript_path || undefined, id: e.session_id || undefined }
+      live.sess = { transcript: e.transcript_path || undefined, id: e.session_id || undefined, cwd: live.sess.cwd ?? await $.session.cwd() }
     if (e.source !== 'startup' && e.source !== 'clear') return ran
-    const cwd = await $.session.cwd()
+    const cwd = live.sess.cwd ?? await $.session.cwd()
     const text = (await check(io($), cwd, (await isOn(io($), 'check')) ? e.source : undefined)).trim()
     return text ? { ...ran, additionalContext: [...(ran.additionalContext ?? []), text] } : ran
   })

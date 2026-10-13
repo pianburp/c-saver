@@ -318,7 +318,7 @@ export async function feedLedger(io: Io, state: State, now: number) {
 }
 
 /** One session's status line: the transcript it reads and the glow state it keeps between frames. */
-export type Session = { transcript?: string; id?: string; state?: State; saved?: string; ttl?: number }
+export type Session = { transcript?: string; id?: string; cwd?: string; state?: State; saved?: string; ttl?: number }
 
 const envNumber = async (io: Io, name: EnvName) => {
   const raw = await io.env(name)
