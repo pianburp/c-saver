@@ -1,6 +1,6 @@
 ![claude-saver status line in Claude Code](image.png)
 
-# claude-saver
+# c-saver
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Claude Code: v2.1.287+](https://img.shields.io/badge/Claude_Code-v2.1.287%2B-brightblue.svg)
