@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 
 import { disk } from './fakeio'
+import { fmtUsd, savedUsd } from './saver'
 
 type On = Parameters<typeof mock.env>[0]
 
@@ -87,11 +88,11 @@ test('/savings: blocked reads, quieter reruns, trims and auto-compacts each get 
   session(on, {
     '/t/s2.jsonl': jsonl([
       use('r1', 'Read', { file_path: 'a.ts' }), result('r1', 'x'.repeat(4000)),
-      use('r2', 'Read', { file_path: 'b.ts' }), result('r2', 'claude-saver: skipped ~12.5k tokens, a whole read of b.ts.'),
-      use('r3', 'Read', { file_path: 'c' }), result('r3', 'claude-saver: skipped node_modules/, a generated folder.'),
+      use('r2', 'Read', { file_path: 'b.ts' }), result('r2', 'c-saver: skipped ~12.5k tokens, a whole read of b.ts.'),
+      use('r3', 'Read', { file_path: 'c' }), result('r3', 'c-saver: skipped node_modules/, a generated folder.'),
       use('b1', 'Bash', { command: 'npm test' }), result('b1', 'y'.repeat(12000)),
       use('b2', 'Bash', { command: 'npm test -- --silent' }), result('b2', 'y'.repeat(400)),
-      result('b3', 'head\n[claude-saver: trimmed ~4.5k tokens from the middle. Full output: x]\ntail'),
+      result('b3', 'head\n[c-saver: trimmed ~4.5k tokens from the middle. Full output: x]\ntail'),
       { compactMetadata: { trigger: 'auto', preTokens: 9000, postTokens: 1000 } },
       use('z', 'Read', { file_path: 'z' }),
     ]),
@@ -101,6 +102,19 @@ test('/savings: blocked reads, quieter reruns, trims and auto-compacts each get 
   expect(text).toMatch(/guard\s+~2\.9k/) // npm test: 3000 tokens, then 100
   expect(text).toMatch(/trim\s+~4\.5k/)
   expect(text).toMatch(/compact\s+~800/) // 8000 dropped x 1 later call x 10%
+})
+
+test('savedUsd: output bills 5x input, the first matching model wins, an unknown model gets no price', async () => {
+  const rows: [string, number, string, string][] = [['trim', 1_000_000, 'input', ''], ['caveman', 100_000, 'output', '']]
+  const cents = (model: string) => Math.round(savedUsd(rows, model)! * 100)
+  expect(cents('claude-opus-5-5')).toBe(600) // 1M x $4 + 100k x $20
+  expect(cents('claude-opus-4-5-20251101')).toBe(750)
+  expect(cents('claude-opus-4-1')).toBe(2250)
+  expect(cents('claude-sonnet-5-5')).toBe(300)
+  expect(savedUsd(rows, 'claude-3-5-haiku')).toBeUndefined()
+  expect(savedUsd(rows, undefined)).toBeUndefined()
+  expect(fmtUsd(0.004)).toBe('<$0.01')
+  expect(fmtUsd(0.094)).toBe('~$0.09')
 })
 
 test('startup check: a noisy command and an old status line are named; a CLAUDE.md note quiets the command', async ($, on) => {

@@ -16,6 +16,13 @@ const DEFAULT_READ_TOKENS = 1500 // used when the session has no Read calls to a
 export const NOISY = 2000 // tokens; a tool result this big rides along on every later call
 const NOISY_REPEAT = 3 // the startup check names a command once the mod has trimmed it this often
 const CACHE_READ_PRICE = 0.1 // cache reads bill at 10% of input
+// List $ per 1M input tokens by model id, first match wins; output bills at 5× input on every Claude model.
+// shortcut: hand-kept from Anthropic's price list (2026-10); update it when prices change. Unknown models show tokens.
+const INPUT_PRICE: [RegExp, number][] = [
+  [/fable|mythos/, 10], [/opus-5-5/, 4], [/opus-(5|4-[5-9])/, 5], [/opus/, 15],
+  [/sonnet-5/, 2], [/sonnet/, 3], [/haiku-5/, 0.1], [/haiku-4/, 1],
+]
+const OUTPUT_PRICE = 5
 const HANDOFF_DAYS = 7
 const MANY_FILES = 1000 // a gitignored folder this big is flagged like node_modules
 // Generated folders the read guards block, so the startup check never flags them.
@@ -397,7 +404,7 @@ export async function check(io: Io, cwd: string, source?: string) {
     const st = await stat(io, notePath)
     const fresh = st !== undefined && (await io.now()) - st.mtimeMs < HANDOFF_DAYS * 86400_000
     await io.write(notePath, '') // one-shot: a stale task note misleads more than it helps
-    if (fresh && note.trim()) out.push('claude-saver: handoff note from the last session (from /handoff):\n' + note.trim())
+    if (fresh && note.trim()) out.push('c-saver: handoff note from the last session (from /handoff):\n' + note.trim())
   }
   if (source !== 'startup') return out.join('\n')
   const loaded = await alwaysLoaded(io, cwd)
@@ -422,7 +429,7 @@ export async function check(io: Io, cwd: string, source?: string) {
     .sort((a, b) => b[0] - a[0] || (b[1] > a[1] ? 1 : b[1] < a[1] ? -1 : 0))
   if (loud[0]) issues.push(`\`${loud[0][1]}\` printed 2k+ tokens ${loud[0][0]} times; add its quiet flag to CLAUDE.md`)
   if (await legacyStatusLine(io)) issues.push('the old Python status line is still set; tell the user to run /saver-setup to switch to the built-in one')
-  if (issues.length) out.push(`claude-saver: ${issues.join('; ')}.${tip}`)
+  if (issues.length) out.push(`c-saver: ${issues.join('; ')}.${tip}`)
   return out.join('\n')
 }
 
@@ -452,7 +459,7 @@ export type Stats = {
   caveman: boolean; ponytail: boolean; reads: number[]; graph_queries: string[]; graph_results: number
   noisy: [number, string][]; noisy_count: number; model_switches: number; cwd: string | null; stamps: Date[]
   denied: (number | null)[]; compacts: [number, number][]; main_calls: number; trimmed: number[]; guard_saved: number
-  tools: Map<string, number>
+  tools: Map<string, number>; model?: string
 }
 
 /** Usage deduped by message id (one transcript line per content block) plus content sizes. */
@@ -497,7 +504,7 @@ export async function sessionStats(io: Io, path: string): Promise<Stats> {
         const name = msg.model
         if (f === path && typeof name === 'string' && name && !name.startsWith('<')) {
           if (model && name !== model) s.model_switches += 1
-          model = name
+          model = s.model = name
         }
       }
       for (const block of Array.isArray(msg.content) ? msg.content as Json[] : []) {
@@ -522,10 +529,10 @@ export async function sessionStats(io: Io, path: string): Promise<Stats> {
           const useId = String(block.tool_use_id ?? '')
           const text = resultText(block.content)
           results.set(useId, tokens(text))
-          const cut = /claude-saver: trimmed ~([\d.]+)([kM]?) tokens/.exec(text)
+          const cut = /(?:claude|c)-saver: trimmed ~([\d.]+)([kM]?) tokens/.exec(text)
           if (cut) s.trimmed.push(Number(cut[1]) * SIZE[cut[2] ?? '']!) // the mod cut a long shell output before Claude read it
           // The mod's blocks: a sized one ("skipped ~12.5k tokens"), or a generated folder priced at the average read.
-          const hit = /claude-saver: skipped (?:[^~\n]*~([\d.]+)([kM]?) tokens|[\w.-]+\/, a generated folder)/.exec(text)
+          const hit = /(?:claude|c)-saver: skipped (?:[^~\n]*~([\d.]+)([kM]?) tokens|[\w.-]+\/, a generated folder)/.exec(text)
           if (hit) s.denied.push(hit[1] ? Number(hit[1]) * SIZE[hit[2] ?? '']! : null)
           else if (toolNames.get(useId) === 'Read' && /^Permission to read .+ has been denied/.test(text))
             s.denied.push(null) // your own deny rule: size unknown, priced at the average read
@@ -582,6 +589,18 @@ export function savedRows(s: Stats): [string, number, string, string][] {
   return rows
 }
 
+/**
+ * savedRows in dollars at the model's list price; undefined for a model not in INPUT_PRICE.
+ * A low bound: a cut token is priced once, not for the cache reads of every later call.
+ */
+export function savedUsd(rows: [string, number, string, string][], model: string | undefined) {
+  const price = model ? INPUT_PRICE.find(([re]) => re.test(model))?.[1] : undefined
+  if (price === undefined) return undefined
+  return rows.reduce((t, [, n, kind]) => t + n * (kind === 'output' ? OUTPUT_PRICE : 1), 0) * price / 1e6
+}
+
+export const fmtUsd = (usd: number) => (usd < 0.01 ? '<$0.01' : `~$${usd.toFixed(2)}`)
+
 export async function savings(io: Io, path: string | undefined, cwd: string) {
   if (!path || !(await isFile(io, path))) return 'No session transcript found.'
   const s = await sessionStats(io, path)
@@ -595,6 +614,8 @@ export async function savings(io: Io, path: string | undefined, cwd: string) {
   if (!rows.length) out.push('  nothing yet: no caveman, ponytail or graphify use, blocked reads, quieter reruns or auto-compacts')
   for (const [name, n, kind, why] of rows) out.push(`  ${name.padEnd(9)} ${('~' + fmt(n)).padStart(7)} ${kind.padEnd(6)}  ${why}`)
   if (rows.length) out.push(`  ${'total'.padEnd(9)} ${('~' + fmt(rows.reduce((t, r) => t + r[1], 0))).padStart(7)}`)
+  const usd = rows.length ? savedUsd(rows, s.model) : undefined
+  if (usd !== undefined) out.push(`  ${'dollars'.padEnd(9)} ${fmtUsd(usd).padStart(7)}         at ${s.model} list price, each cut token priced once (low bound)`)
   out.push('', `  prompt cache  ${fmt(s.cache_read)} input tokens billed at 10% (exact, built into Claude Code)`)
   if (s.noisy.length) {
     out.push('', 'Biggest tool outputs (re-read on every later call; use quiet flags or a subagent):')

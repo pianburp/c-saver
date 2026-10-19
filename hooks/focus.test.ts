@@ -16,10 +16,10 @@ const engineDraws = (on: Parameters<typeof mock.env>[0]) =>
   on('ui.render', ($, e) => h($.ui.resolve(e).Text, {}, 'engine row') as RenderElement)
 
 // The band above the prompt, and one Bash tool row.
-const band = ($: Engine, isWorking = true) => $.ui.mount({ plugin: 'ctx-saver', surface: 'terminal',
+const band = ($: Engine, isWorking = true) => $.ui.mount({ plugin: 'c-saver', surface: 'terminal',
   component: 'AbovePrompt', props: { hasSurvey: false, isWorking, maxRows: 20, bodyColumns: 100,
     scroll: { offset: 0, bodyRows: 19, contentRows: 0 }, view: {} } as never })
-const toolRow = ($: Engine) => $.ui.mount({ plugin: 'ctx-saver', surface: 'terminal', component: 'ToolUse',
+const toolRow = ($: Engine) => $.ui.mount({ plugin: 'c-saver', surface: 'terminal', component: 'ToolUse',
   requestId: 'u1', props: { tool_use_id: 'u1', tool: 'Bash', input: { command: 'ls' },
     isRunning: false, isErrored: false, isInterrupted: false } })
 
@@ -39,7 +39,7 @@ test('focus hides tool rows and in-between text, keeps the answer', async ($, on
   const row = await toolRow($)
   expect((await row.find({ type: 'Box' }))?.props).toMatchObject({ display: 'none' })
 
-  const say = (text: string) => $.ui.mount({ plugin: 'ctx-saver', surface: 'terminal', component: 'AssistantMessage',
+  const say = (text: string) => $.ui.mount({ plugin: 'c-saver', surface: 'terminal', component: 'AssistantMessage',
     requestId: text, props: { text, isFirstOfReply: true } })
   expect((await (await say('Let me look around.')).find({ type: 'Box' }))?.props).toMatchObject({ display: 'none' })
   await $.turn.complete({ answer: 'All set: the page is live.', durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' })
@@ -140,7 +140,7 @@ test('focus registers its steps tool only when the session has no task tool', as
   let tools = ['Read', 'Edit']
   const registered: string[] = []
   on('tool.list', () => ({ value: tools.map(name => ({ name })) as never }))
-  on('tool.register', (_$, e) => { registered.push(e.name); return { value: { tool: `mcp__ctx-saver__${e.name}` } } })
+  on('tool.register', (_$, e) => { registered.push(e.name); return { value: { tool: `mcp__c-saver__${e.name}` } } })
   await $.session.start({ cwd: '/proj', surface: 'terminal', isInteractive: true })
   expect(registered).toEqual(['steps'])
   tools = ['Read', 'TaskCreate']

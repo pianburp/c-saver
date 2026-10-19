@@ -63,6 +63,30 @@ test('--uninstall undoes an apply: the user\'s own settings come back as they we
   expect(JSON.parse(d.get(SETTINGS)!)).toEqual(mine)
 })
 
+test('--auto-update turns it on only for ponytail and caveman marketplaces already added; --uninstall turns it off', async ($, on) => {
+  const mine = { extraKnownMarketplaces: { caveman: { source: { source: 'github', repo: 'JuliusBrussee/caveman' } },
+    other: { source: { source: 'github', repo: 'me/other' } } } }
+  const d = world(on, { [SETTINGS]: JSON.stringify(copy(mine)) })
+  const listed = await saverSetup($, '--auto-update')
+  expect(listed).toContain('+ extraKnownMarketplaces.caveman.autoUpdate: true')
+  expect(listed).toContain('without review')
+  expect(listed).not.toContain('ponytail.autoUpdate')
+
+  await saverSetup($, '--yes --auto-update')
+  const markets = JSON.parse(d.get(SETTINGS)!).extraKnownMarketplaces
+  expect(markets.caveman.autoUpdate).toBe(true)
+  expect(markets.ponytail).toBeUndefined()
+  expect(markets.other.autoUpdate).toBeUndefined()
+
+  await saverSetup($, '--yes --uninstall')
+  expect(JSON.parse(d.get(SETTINGS)!).extraKnownMarketplaces).toEqual(mine.extraKnownMarketplaces)
+})
+
+test('--auto-update with no plugins added says how to add them', async ($, on) => {
+  world(on, { [SETTINGS]: '{}' })
+  expect(await saverSetup($, '--yes --auto-update')).toContain('Run /saver-setup --yes --with-plugins --auto-update')
+})
+
 test('conflicts: standalone caveman skills and SessionStart hooks are named when plugins are installed', async ($, on) => {
   world(on, {
     [SETTINGS]: JSON.stringify({ hooks: { SessionStart: [{ hooks: [{ command: 'python caveman-start.py' }] }] } }),
@@ -102,4 +126,15 @@ test('/saver-setup lists first, then applies: backup, old files removed, --pet c
 
   expect(await saverSetup($, '--yes --orchestrate')).toContain('/toggle route')
   expect(JSON.parse(d.get('/h/.claude/.statusline-ctx/config.json')!)).toEqual({ pet: true, route: true })
+})
+
+test('--hide-band writes ponytail\'s own band switch; with ponytail on, setup offers it until the band is off', async ($, on) => {
+  const d = world(on, { [SETTINGS]: JSON.stringify({ enabledPlugins: { 'ponytail@ponytail': true } }) })
+  expect(await saverSetup($, '--yes')).toContain('--hide-band')
+  expect(d.get('/h/.claude/.ponytail-band')).toBeUndefined()
+  expect(await saverSetup($, '--hide-band')).toContain('Hides ponytail\'s band')
+  expect(d.get('/h/.claude/.ponytail-band')).toBeUndefined() // listed only
+  expect(await saverSetup($, '--yes --hide-band')).toContain('Ponytail band hidden')
+  expect(d.get('/h/.claude/.ponytail-band')).toBe('off')
+  expect(await saverSetup($, '--yes')).not.toContain('band')
 })

@@ -10,8 +10,8 @@
 import type { EnvName, Io } from './io'
 
 import {
-  PET_CRACK, PET_EGG, PET_STAGES, PET_WIDTH, claudeDir, ctxFile, detectTtl, fmt, isOn, isoDay, join,
-  legacyStatusLine, lifetime, loadJson, petRows, read, savedRows, sessionStats, stat,
+  PET_CRACK, PET_EGG, PET_STAGES, PET_WIDTH, claudeDir, ctxFile, detectTtl, fmt, fmtUsd, isOn, isoDay, join,
+  legacyStatusLine, lifetime, loadJson, petRows, read, savedRows, savedUsd, sessionStats, stat,
 } from './saver'
 
 import type { Seg } from '../types'
@@ -215,12 +215,14 @@ export function render(d: Input, state: State, now: number): Row[] {
   const star = busy ? SPINNER[frame % SPINNER.length] : '✻'
   const modesHit = track(state, 'modes', d.modes, now)
   const saved = Number(state.saved_n) || 0
-  const [savedShown, savedAge] = saved ? rose(state, 'saved', saved, now) : [0, undefined]
+  // Dollars when the model has a list price: input and output tokens differ 5× in price, so a token sum misleads.
+  const usd = typeof state.saved_usd === 'number' ? state.saved_usd : undefined
+  const [savedShown, savedAge] = !saved ? [0, undefined] : rose(state, usd === undefined ? 'saved' : 'saved_$', usd ?? saved, now)
   const line1: Seg[][] = [
     [seg(`${star} ${modelName(d.model) || 'Claude'}`, CLAUDE, true)],
     d.effort ? [seg(EFFORT[d.effort] ?? d.effort, GRAY)] : [],
     fmtModes(d.modes, modesHit?.[1]),
-    saved ? [label('saved '), seg('~' + fmt(savedShown), glow(savedAge, GREEN))] : [],
+    saved ? [label('saved '), seg(usd === undefined ? '~' + fmt(savedShown) : fmtUsd(savedShown),glow(savedAge, GREEN))] : [],
   ]
 
   const left = idle !== undefined ? ttl - idle : ttl
@@ -341,10 +343,13 @@ export async function frame(io: Io, sess: Session, nowMs: number): Promise<Row[]
     // Re-parsed only when the transcript changes.
     try {
       const stats = await sessionStats(io, sess.transcript!)
-      state.saved_n = Math.floor(savedRows(stats).reduce((t, r) => t + r[1], 0))
+      const rows = savedRows(stats)
+      state.saved_n = Math.floor(rows.reduce((t, r) => t + r[1], 0))
+      state.saved_usd = savedUsd(rows, stats.model) ?? null
       state.noisy_n = stats.noisy_count
     } catch {
       state.saved_n = state.noisy_n = 0
+      state.saved_usd = null
     }
     sess.ttl = detectTtl(await read(io, sess.transcript!))
     sess.saved = `${st.mtimeMs}:${st.size}`

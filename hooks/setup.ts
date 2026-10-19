@@ -6,13 +6,15 @@ import { claudeDir, ctxFile, home, isWindows, join, loadJson, read, stat } from 
 
 type Json = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 
-export const FLAGS = ['--with-plugins', '--graphify', '--orchestrate', '--pet', '--all', '--yes', '--dry-run', '--uninstall']
+export const FLAGS = ['--with-plugins', '--graphify', '--orchestrate', '--pet', '--hide-band', '--auto-update', '--all', '--yes', '--dry-run', '--uninstall']
 export const USAGE = `Usage: /saver-setup [${FLAGS.join('] [')}]
   --with-plugins  also install the ponytail + caveman plugins (via the claude CLI)
   --graphify      also install graphify (PyPI: graphifyy) and its skill
   --orchestrate   plan on Opus, execute on Sonnet (model: opusplan), read-only subagents on Haiku (/toggle route)
   --all           plugins + graphify (not --orchestrate: that changes your model)
   --pet           a pet on the status line, fed by tokens saved
+  --hide-band     hide ponytail's band above the prompt; the status line shows what you saved (/ponytail band brings it back)
+  --auto-update   keep the ponytail + caveman plugins updated in the background (off by default for third-party marketplaces)
   --yes           apply the changes; without it they are only listed
   --uninstall     remove what setup added; your own settings stay`
 
@@ -27,6 +29,10 @@ const OLD_DENY_READS = ['node_modules', '__pycache__', '.venv', 'venv', '.next',
 const OLD_HOOKS: Record<string, string> = { SessionStart: 'check', PostToolUse: 'guard', PreToolUse: 'secrets' } // event: saver.py subcommand
 const OLD_SKILLS = ['token-audit', 'savings', 'pet', 'handoff', 'toggle', 'wrapped']
 const OLD_FILES = ['statusline.py', 'saver.py']
+
+const autoUpdateNote = (settings: Json) => Object.keys(MARKETPLACES).some(n => settings.extraKnownMarketplaces?.[n]?.autoUpdate === true)
+  ? 'Auto-update installs new ponytail and caveman releases without review. To turn it off: /plugin, Marketplaces, the marketplace, Disable auto-update.'
+  : 'Auto-update: ponytail and caveman are not added yet. Run /saver-setup --yes --with-plugins --auto-update'
 
 const isObj = (v: unknown): v is Json => !!v && typeof v === 'object' && !Array.isArray(v)
 const withPlugins = (args: string[]) => args.includes('--with-plugins') || args.includes('--all')
@@ -54,7 +60,7 @@ export function dropOld(settings: Json) {
   if ('hooks' in settings && !Object.keys(hooks).length) delete settings.hooks
 }
 
-/** Merge claude-saver's keys into settings.json; keep the user's own values. */
+/** Merge c-saver's keys into settings.json; keep the user's own values. */
 export function applySettings(settings: Json, args: string[], dir = '') {
   const env: Json = (settings.env ??= {})
   // Undocumented but read by Claude Code: auto-compact at 50% of the window instead of near full.
@@ -73,6 +79,10 @@ export function applySettings(settings: Json, args: string[], dir = '') {
       plugins[`${name}@${name}`] ??= true
     }
   }
+  // Only marketplaces already added: auto-update alone should not register one.
+  if (args.includes('--auto-update'))
+    for (const name of Object.keys(MARKETPLACES))
+      if (isObj(settings.extraKnownMarketplaces?.[name])) settings.extraKnownMarketplaces[name].autoUpdate = true
   return settings
 }
 
@@ -82,6 +92,8 @@ export function removeSettings(settings: Json) {
   for (const [key, value] of [['CLAUDE_AUTOCOMPACT_PCT_OVERRIDE', '50'], ['CLAUDE_CODE_SUBAGENT_MODEL', 'haiku']] as const)
     if (env[key] === value) delete env[key]
   if (settings.model === 'opusplan') delete settings.model
+  for (const name of Object.keys(MARKETPLACES))
+    if (settings.extraKnownMarketplaces?.[name]?.autoUpdate === true) delete settings.extraKnownMarketplaces[name].autoUpdate
   if (typeof settings.statusLine?.command === 'string' && settings.statusLine.command.includes(STATUS_SCRIPT))
     delete settings.statusLine
   const deny = settings.permissions?.deny
@@ -153,7 +165,7 @@ async function removeOldFiles(io: Io, out: string[]) {
     if (await stat(io, join(dir, name)))
       out.push((await remove(io, join(dir, name))) ? `Removed ${name}` : `Could not remove ${join(dir, name)}; it is no longer used, delete it by hand`)
   if (await stat(io, join(dir, 'statusline.py.bak')))
-    out.push('Your status line from before claude-saver is in statusline.py.bak. Point statusLine at it to use it again.')
+    out.push('Your status line from before c-saver is in statusline.py.bak. Point statusLine at it to use it again.')
 }
 
 /** True when the claude CLI installed every plugin; else the user finishes in /plugin. */
@@ -199,7 +211,9 @@ export async function setup(io: Io, args: string[]) {
   const out = diff.length ? [`Changes to ${path}:`, ...diff.map(l => '  ' + l)] : [`No changes to ${path}.`]
   if (!args.includes('--yes') || args.includes('--dry-run')) {
     out.push('', uninstall ? 'Also removes ~/.claude/.statusline-ctx (pet and ledger included) and the old Python files.'
-      : 'Also removes the Python status line and saver.py an older version installed, if present.')
+      : 'Also removes the Python status line and saver.py an older version installed, if present.' +
+        (args.includes('--hide-band') ? ' Hides ponytail\'s band above the prompt.' : ''))
+    if (args.includes('--auto-update') && !uninstall) out.push(autoUpdateNote(settings))
     out.push(`Run ${['/saver-setup', '--yes', ...args.filter(a => a !== '--dry-run' && a !== '--yes')].join(' ')} to apply.`)
     return out.join('\n')
   }
@@ -216,14 +230,14 @@ export async function setup(io: Io, args: string[]) {
   await removeOldSkills(io, out)
   if (uninstall) {
     if (await remove(io, join(dir, '.statusline-ctx'))) out.push('Removed .statusline-ctx (pet, ledger and switches)')
-    out.push('To remove the mod itself: /plugin uninstall ctx-saver. Plugins stay; to remove them: ' +
+    out.push('To remove the mod itself: /plugin uninstall c-saver. Plugins stay; to remove them: ' +
       '/plugin uninstall ponytail@ponytail and caveman@caveman, graphify uninstall.')
     return out.join('\n')
   }
 
   const scriptPath = join(dir, STATUS_SCRIPT)
   await io.write(scriptPath, `#!/bin/sh
-# claude-saver: prints the status line the mod drew for this session.
+# c-saver: prints the status line the mod drew for this session.
 id=$(sed -n 's/.*"session_id" *: *"\\([^"]*\\)".*/\\1/p' | head -n 1)
 cat "${dir}/.statusline-ctx/line/$id.txt" 2>/dev/null
 `)
@@ -241,6 +255,15 @@ cat "${dir}/.statusline-ctx/line/$id.txt" 2>/dev/null
     out.push('Read-only subagents on Haiku (/toggle route to turn it off)')
   }
   if (Object.keys(on).length) await io.write(cfgPath, JSON.stringify({ ...cfg, ...on }))
+  // ponytail's own switch: `/ponytail band` writes and deletes the same file. Its ledger and board keep recording.
+  const bandPath = join(dir, '.ponytail-band')
+  const bandOff = (await read(io, bandPath))?.trim() === 'off'
+  if (args.includes('--hide-band') && !bandOff) {
+    await io.write(bandPath, 'off')
+    out.push('Ponytail band hidden (/ponytail band brings it back)')
+  } else if (!bandOff && (settings.enabledPlugins?.['ponytail@ponytail'] || withPlugins(args)))
+    out.push('Ponytail\'s band repeats the status line. To hide it: /saver-setup --yes --hide-band')
+  if (args.includes('--auto-update')) out.push(autoUpdateNote(settings))
   if (args.includes('--graphify') || args.includes('--all')) await installGraphify(io, out)
   if (withPlugins(args)) {
     if (await installPlugins(io)) out.push('Installed ponytail and caveman plugins')

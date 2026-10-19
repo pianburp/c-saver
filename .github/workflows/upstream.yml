@@ -1,9 +1,10 @@
-# Weekly: fail if ponytail, caveman or graphify renamed something hooks/status.ts or hooks/saver.ts reads.
+# Daily: fail if ponytail, caveman or graphify renamed something hooks/status.ts or hooks/saver.ts reads.
+# Daily, not weekly: /saver-setup --auto-update ships their releases to users within a session.
 # GitHub emails the repo owner when a scheduled run fails.
 name: upstream
 on:
   schedule:
-    - cron: "0 6 * * 1"
+    - cron: "0 6 * * *"
   workflow_dispatch:
 
 jobs:
@@ -21,6 +22,7 @@ jobs:
           }
           need ponytail '\.ponytail-active'           # hooks/status.ts mode badge
           need ponytail 'PONYTAIL MODE ACTIVE'        # hooks/saver.ts session detection
+          need ponytail '\.ponytail-band'             # hooks/setup.ts --hide-band
           need caveman '\.caveman-active'             # hooks/status.ts mode badge
           need caveman '\.caveman-sessions'           # hooks/status.ts per-session mode
           need caveman 'CAVEMAN MODE ACTIVE'          # hooks/saver.ts session detection

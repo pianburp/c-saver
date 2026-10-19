@@ -1,4 +1,4 @@
-![claude-saver status line in Claude Code](image.png)
+![c-saver status line in Claude Code](image.png)
 
 # c-saver
 
@@ -9,14 +9,14 @@
 Spend fewer tokens in [Claude Code](https://claude.com/claude-code) without changing how you work.
 
 Every API call re-sends your CLAUDE.md, memory, tool schemas and the whole conversation.
-claude-saver trims what gets re-sent, shows you when it's about to get expensive,
+c-saver trims what gets re-sent, shows you when it's about to get expensive,
 and tells you what each saver actually saved. One Claude Code [mod](#mod): nothing else to install, no daemon.
 
 In Claude Code:
 
 ```
-/plugin marketplace add pianburp/claude-saver
-/plugin install ctx-saver@pianburp
+/plugin marketplace add pianburp/c-saver
+/plugin install c-saver@pianburp
 ```
 
 The plugin is the mod: the status line, the guards, the startup check and every command.
@@ -52,16 +52,16 @@ Upgrading from an older version? Run `/saver-setup --yes`. It removes the old st
 | [ponytail](https://github.com/DietrichGebert/ponytail) | Less code written: 80-94% fewer lines in its benchmark | Opt-in (`--with-plugins`, `--all`) |
 | [graphify](https://github.com/safishamsi/graphify) | Claude queries a code graph instead of re-reading files | Opt-in (`--all`) |
 
-caveman, ponytail and graphify are third-party projects. claude-saver only installs them and measures them.
+caveman, ponytail and graphify are third-party projects. c-saver only installs them and measures them.
 
 ## Status line
 
 ```
-✻ Opus 5.5 · hi · pony full + cave · saved ~18.3k
+✻ Opus 5.5 · hi · pony full + cave · saved ~$0.43
 ⎿ ctx ██░░░░ 31% · 5h 63% 12:51p full 11:40a · 7d 91% Thu · ● 52m
 ```
 
-- **Line 1:** model, effort (`lo`, `med`, `hi`, `xhi`, `max`), active ponytail/caveman modes, `saved` (estimated tokens saved this session, the `total` row of [`/savings`](#savings)).
+- **Line 1:** model, effort (`lo`, `med`, `hi`, `xhi`, `max`), active ponytail/caveman modes, `saved` (estimated dollars saved this session, the `dollars` row of [`/savings`](#savings); tokens for a model with no known price).
 - **Line 2:** `ctx` is context used. `5h` and `7d` are your usage limits and when they reset: the time when under 24h away, else the day.
   `full 11:40a` (red) shows when your average pace since the window opened hits 100% before the reset. It waits until a tenth of the window has passed (30 minutes of 5h, about 17 hours of 7d).
   `● 52m` is time left on the prompt cache. The pie drains `● ◕ ◑ ◔` as it runs down, gray until its last 5 minutes, `○ cold` once it expires.
@@ -224,6 +224,7 @@ Saved **estimated
   reads      ~12.9k input   2 reads blocked by the read guards or deny rules (folder blocks at ~1.2k each)
   guard       ~2.9k input   noisy commands run again with less output
   total      ~34.0k
+  dollars    ~$0.43         at claude-opus-5-5 list price, each cut token priced once (low bound)
 
   prompt cache  752.2k input tokens billed at 10% (exact, built into Claude Code)
 ```
@@ -239,6 +240,8 @@ Saved **estimated
 - **guard:** a 2k+ token command run again with less output, e.g. with the quiet flag the output trim suggested. The difference counts once.
 - **compact:** each auto-compact's dropped tokens × the calls after it, at the 10% cache-read price those calls would have paid.
   It credits all auto-compaction, not only the earlier trigger the 50% setting gives.
+- **dollars:** the rows at the session model's list price, output at 5× input. Input and output tokens differ 5× in price, so compare this row, not `total`.
+  A low bound: each cut token is priced once, not for the cache reads of every later call. Prices are kept by hand in `hooks/saver.ts`.
 
 It also lists the three biggest tool outputs (2k+ tokens) with their command.
 They stay in context and are re-read on every later call, so add quiet flags (`--reporter=dot`, `-q`) or run them in a subagent.
@@ -330,6 +333,8 @@ Install the plugin (top of this page). The status line, guards and commands need
 | `--all` | Both of the above |
 | `--orchestrate` | opusplan + `/toggle route` on |
 | `--pet` | Turns the [pet](#pet) on |
+| `--hide-band` | Hides ponytail's band above the prompt, so savings live in the status line only. Its ledger and board keep recording. `/ponytail band` brings it back |
+| `--auto-update` | Turns on background auto-update for the ponytail and caveman marketplaces you added (off by default for third-party ones). New releases install without review; `/plugin` → **Marketplaces** turns it off. `--uninstall` removes it |
 | `--yes` | Applies the changes. Without it they are only listed |
 | `--uninstall` | Removes what setup added (see below) |
 
@@ -346,8 +351,9 @@ What `/saver-setup --yes` touches:
    Skills of your own with those names stay. An old `--pet` carries over to `/toggle pet`.
 
 **Update:** `/plugin` → **Marketplaces** → `pianburp` (turn on auto-update). The status line updates with the plugin.
+For ponytail and caveman: `/saver-setup --yes --auto-update`.
 
-**Uninstall:** `/saver-setup --yes --uninstall`, then `/plugin uninstall ctx-saver@pianburp`.
+**Uninstall:** `/saver-setup --yes --uninstall`, then `/plugin uninstall c-saver@pianburp`.
 
 - Run it without `--yes` first to see the `settings.json` changes.
 - It removes `.statusline-ctx/` (pet and ledger included) from `~/.claude/`, and any scripts an older version left.
@@ -383,7 +389,7 @@ What `/saver-setup --yes` touches:
 | `hooks/setup.ts` | `/saver-setup`: merges `settings.json`, removes what older versions installed. |
 | `hooks/focus.ts` | Focus mode's pure helpers. |
 | `hooks/*.test.ts` | Tests, run with `claude plugin test .`; `hooks/fakeio.ts` is their in-memory file system. |
-| `.github/workflows/upstream.yml` | Weekly job that fails if caveman, ponytail or graphify rename a flag file or marker that claude-saver reads. |
+| `.github/workflows/upstream.yml` | Daily job that fails if caveman, ponytail or graphify rename a flag file or marker that c-saver reads. |
 
 Token counts are `chars / 4`, the same approximation graphify and most tools use. Exact numbers come only from transcript `usage` fields.
 

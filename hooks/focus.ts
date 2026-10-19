@@ -19,11 +19,11 @@ export function agentRows(agents: readonly Agent[]) {
 
 /** Asks Claude to keep the step list the focus band draws, and to end on a short summary. */
 export const FOCUS_PROMPT = {
-  id: 'ctx-saver:focus',
+  id: 'c-saver:focus',
   scope: 'session',
   text: 'Focus mode is on: the user does not see your tool calls or the text you write between them, only a ' +
     'step list with a timer and your final message. In the main conversation (not as a subagent), for any task ' +
-    'that needs more than one tool call, first write 3 to 6 steps with TaskCreate (or TodoWrite, or the ctx-saver ' +
+    'that needs more than one tool call, first write 3 to 6 steps with TaskCreate (or TodoWrite, or the c-saver ' +
     'steps tool when you have neither), each in plain words someone who does not code understands, like "Check how ' +
     'the page gets live weather". Your first edit or command is refused until the steps exist. Keep exactly one ' +
     'step in_progress and, as soon as it is done, mark it completed and the next one in_progress in the same ' +
@@ -44,7 +44,7 @@ export const STEPS_SPEC = {
   },
   isDeferred: false, // in the prompt's tool list, so Claude sees it without ToolSearch
 } as const
-export const STEPS_TOOL = 'mcp__ctx-saver__steps'
+export const STEPS_TOOL = 'mcp__c-saver__steps'
 
 /** The steps tool's input as band steps, or undefined when it is not a list of { text, status }. */
 export function parseSteps(input: unknown): Step[] | undefined {

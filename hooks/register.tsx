@@ -1,4 +1,4 @@
-// claude-saver's mod: every guard, startup check and command. The guards run in-process, so they can answer a call
+// c-saver's mod: every guard, startup check and command. The guards run in-process, so they can answer a call
 // without running the tool and share state, which a settings hook cannot. saver.ts holds the commands' logic,
 // status.ts the status line's, setup.ts /saver-setup's. Focus mode (/toggle focus) hides tool rows and draws a step band.
 import { atom, read, update } from 'claude-code'
@@ -63,7 +63,7 @@ const COMMANDS: [string, string, string?][] = [
 // The mod writes the input, then Claude does the work in a turn of its own: [description, prompt].
 const MODEL_COMMANDS: Record<string, [string, (out: string) => string]> = {
   'token-audit': ['Audit what Claude Code loads every session (CLAUDE.md, memory, rules, MCP) and prune it', out =>
-    `claude-saver's /token-audit report:\n\n${out}\n\n` +
+    `c-saver's /token-audit report:\n\n${out}\n\n` +
     'Propose concrete cuts for each flagged file: duplicate lines, stale paths, long prose, code blocks that belong ' +
     'in a skill or doc, notes for humans that can become <!-- --> comments. Show each change as a diff and apply ' +
     'nothing until I say yes. Before editing a file, copy it to <file>.bak. If the caveman plugin is installed, ' +
@@ -117,7 +117,7 @@ export function heavy(tool: string, ti: Input): string | undefined {
     const paths = ['file_path', 'path', 'pattern', 'glob'].map(k => ti[k]).filter(v => typeof v === 'string') as string[]
     dir = HEAVY.find(d => paths.some(p => heavyIn(p) === d))
   }
-  return dir && `claude-saver: skipped ${dir}/, a generated folder. Read the source or the package's docs instead.`
+  return dir && `c-saver: skipped ${dir}/, a generated folder. Read the source or the package's docs instead.`
 }
 
 /** Whether a call may change something: an edit, or a shell command that is more than reads (focus mode's step gate). */
@@ -142,7 +142,7 @@ export function bigRead(path: string, size: number, ti: Input): string | undefin
   if (ti.offset || ti.limit) return
   const name = base(path).toLowerCase()
   if (LOCKFILES.has(name) || MINIFIED.some(s => name.endsWith(s)) || (size > BIG_READ && !MEDIA.some(s => name.endsWith(s))))
-    return `claude-saver: skipped ~${fmt(size / 4)} tokens, a whole read of ${base(path)}. ` +
+    return `c-saver: skipped ~${fmt(size / 4)} tokens, a whole read of ${base(path)}. ` +
       'Grep it for what you need, or Read it with offset and limit.'
 }
 
@@ -160,9 +160,9 @@ export function trim(text: string, where: string): { text: string; cut: number }
   const cut = Math.floor((text.length - head.length - tail.length - errors.length) / 4)
   return {
     cut,
-    text: `${head}\n[claude-saver: trimmed ~${fmt(cut)} tokens from the middle. Full output: ${where} ` +
+    text: `${head}\n[c-saver: trimmed ~${fmt(cut)} tokens from the middle. Full output: ${where} ` +
       '(Grep it, or Read it with offset and limit). Next time use quiet flags or pipe through tail or grep.]\n' +
-      (errors && `[claude-saver: error lines from the trimmed part]\n${errors}`) + '\n' + tail,
+      (errors && `[c-saver: error lines from the trimmed part]\n${errors}`) + '\n' + tail,
   }
 }
 
@@ -196,10 +196,10 @@ function io($: EngineInterface): Io {
 }
 
 // Focus mode's state: the switch, the task the band shows, the clock it reads, and the turns' final answers.
-const focus = atom({ plugin: 'ctx-saver', key: 'focus' } as const, true)
-const run = atom({ plugin: 'ctx-saver', key: 'run' } as const, null)
-const now = atom({ plugin: 'ctx-saver', key: 'now' } as const, 0)
-const answers = atom({ plugin: 'ctx-saver', key: 'answers' } as const, [])
+const focus = atom({ plugin: 'c-saver', key: 'focus' } as const, true)
+const run = atom({ plugin: 'c-saver', key: 'run' } as const, null)
+const now = atom({ plugin: 'c-saver', key: 'now' } as const, 0)
+const answers = atom({ plugin: 'c-saver', key: 'answers' } as const, [])
 const FRAME = 100 // ms between band frames while a turn runs
 const STATUS_FRAME = 1000 // ms between status line frames, as the old refreshInterval
 const KEEP_ANSWERS = 100
@@ -321,7 +321,7 @@ export const register: Register = on => {
   on('tool.call', { tool: /^(Bash|PowerShell|Read|Grep|Glob|Write|Edit|MultiEdit)$/ }, async ($, e, next) => {
     const reason = (await isOn(io($), 'secrets')) && secrets(String(e.tool), e as unknown as Input)
     return reason ? { deny: reason } : next(e)
-  }).catch(($, e, next) => (next.called ? next(e) : { deny: 'claude-saver: the secret guard failed, so this call is refused.' }))
+  }).catch(($, e, next) => (next.called ? next(e) : { deny: 'c-saver: the secret guard failed, so this call is refused.' }))
 
   on('tool.call', { tool: /^(Read|Grep|Glob|Bash|PowerShell)$/ }, async ($, e, next) => {
     const tool = String(e.tool)
@@ -422,7 +422,7 @@ export const register: Register = on => {
     if (!r || r.endedAt !== null || r.steps.length || r.nudged || !changes(String(e.tool), e as unknown as Input)
       || !(await read($, focus))) return next(e)
     await update($, run, x => x && { ...x, nudged: true })
-    return { deny: 'Focus mode: write your steps first with TaskCreate (or TodoWrite, or the ctx-saver steps tool), ' +
+    return { deny: 'Focus mode: write your steps first with TaskCreate (or TodoWrite, or the c-saver steps tool), ' +
       'then make this change again.' }
   })
 

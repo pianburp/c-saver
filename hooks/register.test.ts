@@ -126,7 +126,7 @@ test('a long Bash output is trimmed and saved in full', async ($, on) => {
 
   const ran = await $.tool.call({ tool: 'Bash', command: 'npm test' })
   const stdout = (ran.result as { stdout: string }).stdout
-  expect(stdout).toContain('claude-saver: trimmed ~')
+  expect(stdout).toContain('c-saver: trimmed ~')
   // the engine resolves paths before the hooks see them: C:\home\u\... on Windows
   const file = (end: string) => Object.entries(written).find(([path]) => path.replace(/\\/g, '/').endsWith(end))?.[1]
   expect(file('/home/u/.claude/.statusline-ctx/out/0.txt')).toBe(long)
@@ -157,12 +157,12 @@ test('SessionStart shows the /handoff note once, on startup and /clear only', as
   on('session.cwd', () => ({ value: dir }))
   on('classic.SessionStart', () => ({})) // the settings hooks beneath
   const first = await $.classic.SessionStart({ source: 'clear' })
-  expect(first.additionalContext).toEqual(['claude-saver: handoff note from the last session (from /handoff):\nGoal: ship it'])
+  expect(first.additionalContext).toEqual(['c-saver: handoff note from the last session (from /handoff):\nGoal: ship it'])
   expect(files['handoff/-proj.md']).toBe('')
   expect((await $.classic.SessionStart({ source: 'clear' })).additionalContext).toBeUndefined()
   files['handoff/-proj.md'] = 'Goal: again'
   expect((await $.classic.SessionStart({ source: 'resume' })).additionalContext).toBeUndefined()
   // A `cd` mid-session must not move the note to another project's file.
   dir = '/proj/sub'
-  expect((await $.classic.SessionStart({ source: 'clear' })).additionalContext).toEqual(['claude-saver: handoff note from the last session (from /handoff):\nGoal: again'])
+  expect((await $.classic.SessionStart({ source: 'clear' })).additionalContext).toEqual(['c-saver: handoff note from the last session (from /handoff):\nGoal: again'])
 })

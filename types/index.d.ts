@@ -13,6 +13,6 @@ export type Seg = { text: string; color?: string; bold?: boolean }
 
 declare module 'claude-code' {
   interface PluginState {
-    'ctx-saver': { focus: boolean; run: Run | null; now: number; shown: number; answers: string[] }
+    'c-saver': { focus: boolean; run: Run | null; now: number; shown: number; answers: string[] }
   }
 }

@@ -1,10 +1,10 @@
 {
-  "name": "ctx-saver",
+  "name": "c-saver",
   "version": "2.0.0",
   "description": "Spend fewer tokens in Claude Code. One mod, no Python: a status line with context, limits, cache countdown and pet; it trims long shell output, blocks generated folders, huge reads, repeat reads and secrets, and answers /savings, /pet, /toggle, /wrapped, /token-audit and /handoff. /saver-setup adds auto-compact at 50% and the .env deny rules.",
   "author": { "name": "pianburp", "url": "https://github.com/pianburp" },
-  "homepage": "https://github.com/pianburp/claude-saver",
-  "repository": "https://github.com/pianburp/claude-saver",
+  "homepage": "https://github.com/pianburp/c-saver",
+  "repository": "https://github.com/pianburp/c-saver",
   "license": "MIT",
   "types": "./types/index.d.ts",
   "keywords":["tokens", "statusline", "context", "cost", "compact"]

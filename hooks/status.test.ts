@@ -100,6 +100,14 @@ test('the ledger is credited once per gain, however often the line redraws', asy
   const ledger = JSON.parse(d.get(LEDGER)!)
   expect(ledger.total).toBe(371)
   expect(Object.values(ledger.days)).toEqual([371])
+  await clock.advance(10_000) // past the count-up
+  expect(d.get(LINE)!.replace(ANSI, '')).toContain('saved ~371') // no model in the transcript: tokens
+
+  // A priced model: dollars, output at $20/1M. 100k reply tokens cut 65% save 185.7k output tokens.
+  const priced = { message: { id: 'm1', role: 'assistant', model: 'claude-opus-5-5', usage: {}, content: [] } }
+  d.put(TRANSCRIPT, jsonl([...caveman(100_000), priced]))
+  await clock.advance(10_000)
+  expect(d.get(LINE)!.replace(ANSI, '')).toContain('saved ~$3.71')
 })
 
 test('an older install\'s status line draws nothing; the pet follows /toggle pet', async ($, on) => {
