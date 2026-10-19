@@ -53,6 +53,8 @@ Upgrading from an older version? Run `/saver-setup --yes`. It removes the old st
 | [graphify](https://github.com/safishamsi/graphify) | Claude queries a code graph instead of re-reading files | Opt-in (`--all`) |
 
 caveman, ponytail and graphify are third-party projects. c-saver only installs them and measures them.
+Their percentages are the projects' own published claims, not c-saver's: see the [caveman](https://github.com/JuliusBrussee/caveman) and [ponytail](https://github.com/DietrichGebert/ponytail) READMEs.
+[`/savings`](#savings) applies them to your session's tokens and marks the result `~` (estimated).
 
 ## Status line
 
@@ -231,8 +233,8 @@ Saved **estimated
 
 `used` and `prompt cache` are exact, read from the session transcript. `Saved` rows are estimates:
 
-- **caveman:** reply tokens × the published 65% average cut.
-- **ponytail:** code tokens written × the published 80% low-end cut.
+- **caveman:** reply tokens × the 65% average cut [caveman publishes](https://github.com/JuliusBrussee/caveman). Their claim, not measured by c-saver.
+- **ponytail:** code tokens written × the 80% low-end cut [ponytail publishes](https://github.com/DietrichGebert/ponytail). Their claim, not measured by c-saver.
 - **graphify:** assumes each graph query replaced 5 file reads of this session's average size.
   This is a guess. For a real number on your repo, run `graphify benchmark`.
 - **reads:** each call blocked by a [read guard](#read-guards) (at the file's size), or by the [folder guard](#folder-guard) or a deny rule of yours (at the session's average read size).
@@ -419,6 +421,9 @@ The automatic checks and audit tips come from these:
 - [How to save tokens](https://mydataschool.com/blog/how-to-save-tokens/) (mydataschool)
 - [Save tokens with Opus plan mode](https://www.mindstudio.ai/blog/save-tokens-claude-code-opus-plan-mode) (MindStudio)
 - [10 tips to stop burning your tokens in Claude Code](https://medium.com/@habib23me/10-tip-to-stop-burning-your-tokens-in-claude-code-4776d4ac8956)
+- [The new rules of context engineering for Claude 5 generation models](https://claude.dev/blog/the-new-rules-of-context-engineering-for-claude-5-generation-models/) (Anthropic):
+  Anthropic cut over 80% of Claude Code's system prompt for Claude 5 models with no measurable loss on their coding evals, and warns that fixed style rules can conflict with the task.
+  `/doctor` covers part of what [`/token-audit`](#token-audit) checks.
 
 ## License
 
