@@ -205,6 +205,7 @@ Lists every file Claude Code loads each session (global and project CLAUDE.md, `
 `AGENTS.md` counts when no CLAUDE.md exists. It flags:
 
 - Files over 500 tokens, code blocks over 10 lines, stale paths, and lines repeated across files.
+- General advice: lines like "always…", "make sure…" or "you should…" that name no file, command or symbol. Newer models follow these without being told. Delete them, and re-add one only if a fresh session gets it wrong.
 - A MEMORY.md too long to load in full, and rules without `paths:` frontmatter (those load every session).
 - Project MCP servers (`.mcp.json`), unblocked heavy folders, and a `.claudeignore` (Claude Code doesn't read it).
 - Subagents on your main model (and custom agents with no `model:`), no `## Compact instructions` section, and an unset `BASH_MAX_OUTPUT_LENGTH`.

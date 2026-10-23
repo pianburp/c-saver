@@ -65,7 +65,8 @@ const MODEL_COMMANDS: Record<string, [string, (out: string) => string]> = {
   'token-audit': ['Audit what Claude Code loads every session (CLAUDE.md, memory, rules, MCP) and prune it', out =>
     `c-saver's /token-audit report:\n\n${out}\n\n` +
     'Propose concrete cuts for each flagged file: duplicate lines, stale paths, long prose, code blocks that belong ' +
-    'in a skill or doc, notes for humans that can become <!-- --> comments. Show each change as a diff and apply ' +
+    'in a skill or doc, notes for humans that can become <!-- --> comments, and general advice the model follows ' +
+    'unprompted (keep project facts and invariants it cannot infer from the code). Show each change as a diff and apply ' +
     'nothing until I say yes. Before editing a file, copy it to <file>.bak. If the caveman plugin is installed, ' +
     'offer /caveman:caveman-compress for files still over 500 tokens.'],
   handoff: ['Save a task note before /clear; the next session in this project starts with it', out =>

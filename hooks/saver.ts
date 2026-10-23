@@ -5,6 +5,7 @@ import type { EnvName, Io } from './io'
 type Json = Record<string, unknown>
 
 const LONG_FILE = 500 // tokens; Firecrawl's guide targets 200-500 for CLAUDE.md
+const GENERIC_ADVICE = /\b(always|make sure|ensure|you (should|must)|be sure to|remember to|try to|step by step|be (concise|careful|thorough|clear))\b/i
 const MEMORY_LINES = 200 // auto memory loads only this much of MEMORY.md
 const MEMORY_BYTES = 25000
 // Published reductions. Sources: caveman README (65% avg output cut), ponytail benchmarks (80-94% fewer lines; low end used).
@@ -231,6 +232,10 @@ export async function fileFindings(io: Io, path: string, text: string, cwd: stri
     for (const b of [cwd, base]) if (!found && (await exists(io, join(b, rel)))) found = true
     if (!found) out.push(`maybe stale path: ${span}`)
   }
+  // A line with no `code span` names no file, command or symbol: generic advice newer models follow unprompted.
+  const advice = seenText.split(/\r?\n/).filter(l => !l.includes('`') && GENERIC_ADVICE.test(l))
+  if (advice.length)
+    out.push(`${advice.length} line(s) of general advice, e.g. "${advice[0]!.trim().slice(0, 60)}": newer models do this unprompted; delete, re-add only if a fresh session gets it wrong`)
   return out
 }
 

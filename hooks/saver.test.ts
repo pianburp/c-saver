@@ -63,6 +63,15 @@ test('/token-audit: a gitignored folder of 1000+ files is named; a small one and
   expect(prompts[0]).not.toMatch(/Unblocked heavy dirs: [^\n]*small/)
 })
 
+test('/token-audit: general advice is flagged; a rule that names a command is not', async ($, on) => {
+  const { clock, prompts } = session(on, {
+    '/h/proj/CLAUDE.md': '# Rules\nAlways write clean, readable code.\nAlways run `npm test -- --silent` first.\n',
+  })
+  await $.command.run({ command: 'token-audit', args: '' } as never)
+  await clock.settle()
+  expect(prompts[0]).toContain('1 line(s) of general advice, e.g. "Always write clean, readable code."')
+})
+
 test('/savings: usage counted once per message id; modes and graph queries credited', async ($, on) => {
   session(on, {
     '/t/s.jsonl': jsonl([
