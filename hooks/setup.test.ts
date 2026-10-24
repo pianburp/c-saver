@@ -9,8 +9,8 @@ const SETTINGS = '/h/.claude/settings.json'
 const copy = <T>(v: T): T => JSON.parse(JSON.stringify(v))
 
 /** Home /h with these files; /saver-setup runs through the mod's command hook, as Claude would run it. */
-function world(on: On, files: Record<string, string>) {
-  mock.env(on, { HOME: '/h' })
+function world(on: On, files: Record<string, string>, env: Record<string, string> = {}) {
+  mock.env(on, { HOME: '/h', ...env })
   const clock = mock.clock(on, { now: Date.UTC(2026, 9, 5, 12) })
   const d = disk(on, files, () => clock.now())
   on('session.cwd', () => ({ value: '/proj' }))
@@ -126,6 +126,14 @@ test('/saver-setup lists first, then applies: backup, old files removed, --pet c
 
   expect(await saverSetup($, '--yes --orchestrate')).toContain('/toggle route')
   expect(JSON.parse(d.get('/h/.claude/.statusline-ctx/config.json')!)).toEqual({ pet: true, route: true })
+})
+
+test('on Windows with node, the status line runs on node and an earlier sh line is switched over', async ($, on) => {
+  const sh = { type: 'command', command: 'sh "/h/.claude/.statusline-ctx/statusline.sh"', refreshInterval: 1 }
+  const d = world(on, { [SETTINGS]: JSON.stringify({ statusLine: sh }) }, { OS: 'Windows_NT' })
+  expect(await saverSetup($, '--yes')).toContain('~ statusLine.command')
+  expect(JSON.parse(d.get(SETTINGS)!).statusLine.command).toBe('node "/h/.claude/.statusline-ctx/statusline.cjs"')
+  expect(d.get('/h/.claude/.statusline-ctx/statusline.cjs')).toContain('"/h/.claude/.statusline-ctx/line/" + JSON.parse(input).session_id')
 })
 
 test('--hide-band writes ponytail\'s own band switch; with ponytail on, setup offers it until the band is off', async ($, on) => {

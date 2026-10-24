@@ -22,7 +22,11 @@ export const MARKETPLACES: Record<string, string> = { ponytail: 'DietrichGebert/
 
 // Secrets stay out of the API even where the mod is not loaded. Named files, not .env.*, so .env.example stays readable.
 export const DENY_READS = ['Read(**/.env)', 'Read(**/.env.local)', 'Read(**/.env.*.local)']
-export const STATUS_SCRIPT = '.statusline-ctx/statusline.sh'
+export const STATUS_SCRIPT = '.statusline-ctx/statusline' // .sh, or .cjs where node runs it
+
+// On Windows each `sh` is MSYS, which leaves sh.exe.stackdump in the project when Claude Code kills it; node does not.
+const statusCommand = (dir: string, node: boolean) =>
+  node ? `node "${join(dir, STATUS_SCRIPT)}.cjs"` : `sh "${join(dir, STATUS_SCRIPT)}.sh"`
 
 // What older versions installed and the mod now does: removed on install and uninstall.
 const OLD_DENY_READS = ['node_modules', '__pycache__', '.venv', 'venv', '.next', 'coverage'].map(d => `Read(**/${d}/**)`)
@@ -61,7 +65,7 @@ export function dropOld(settings: Json) {
 }
 
 /** Merge c-saver's keys into settings.json; keep the user's own values. */
-export function applySettings(settings: Json, args: string[], dir = '') {
+export function applySettings(settings: Json, args: string[], dir = '', node = false) {
   const env: Json = (settings.env ??= {})
   // Undocumented but read by Claude Code: auto-compact at 50% of the window instead of near full.
   env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE ??= '50'
@@ -70,7 +74,10 @@ export function applySettings(settings: Json, args: string[], dir = '') {
   const deny: string[] = ((settings.permissions ??= {}).deny ??= [])
   deny.push(...DENY_READS.filter(r => !deny.includes(r)))
   dropOld(settings)
-  settings.statusLine ??= { type: 'command', command: `sh "${join(dir, STATUS_SCRIPT)}"`, refreshInterval: 1 }
+  // Our own line from an earlier setup gets the current command; anyone else's stays.
+  if (typeof settings.statusLine?.command === 'string' && settings.statusLine.command.includes(STATUS_SCRIPT))
+    settings.statusLine.command = statusCommand(dir, node)
+  settings.statusLine ??= { type: 'command', command: statusCommand(dir, node), refreshInterval: 1 }
   if (withPlugins(args)) {
     const markets: Json = (settings.extraKnownMarketplaces ??= {})
     const plugins: Json = (settings.enabledPlugins ??= {})
@@ -205,8 +212,9 @@ export async function setup(io: Io, args: string[]) {
   const uninstall = args.includes('--uninstall')
   const legacyPet = legacyCommand(settings)?.endsWith(' --pet') ?? false
   const before = JSON.parse(JSON.stringify(settings))
+  const node = !uninstall && (await isWindows(io)) && (await run(io, ['node', '--version'])) === 0
   if (uninstall) removeSettings(settings)
-  else applySettings(settings, args, dir)
+  else applySettings(settings, args, dir, node)
   const diff = changes(before, settings)
   const out = diff.length ? [`Changes to ${path}:`, ...diff.map(l => '  ' + l)] : [`No changes to ${path}.`]
   if (!args.includes('--yes') || args.includes('--dry-run')) {
@@ -235,8 +243,14 @@ export async function setup(io: Io, args: string[]) {
     return out.join('\n')
   }
 
-  const scriptPath = join(dir, STATUS_SCRIPT)
-  await io.write(scriptPath, `#!/bin/sh
+  const lines = JSON.stringify(`${dir}/.statusline-ctx/line/`)
+  if (node) await io.write(join(dir, STATUS_SCRIPT) + '.cjs', `// c-saver: prints the status line the mod drew for this session.
+let input = ''
+process.stdin.on('data', c => input += c).on('end', () => {
+  try { process.stdout.write(require('fs').readFileSync(${lines} + JSON.parse(input).session_id + '.txt')) } catch {}
+})
+`)
+  else await io.write(join(dir, STATUS_SCRIPT) + '.sh', `#!/bin/sh
 # c-saver: prints the status line the mod drew for this session.
 id=$(sed -n 's/.*"session_id" *: *"\\([^"]*\\)".*/\\1/p' | head -n 1)
 cat "${dir}/.statusline-ctx/line/$id.txt" 2>/dev/null
