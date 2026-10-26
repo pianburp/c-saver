@@ -390,6 +390,7 @@ For ponytail and caveman: `/saver-setup --yes --auto-update`.
 | `hooks/status.ts` | The status line and pet: gathers the session's figures each second and returns colored rows. Per-session glow state lives in `~/.claude/.statusline-ctx/`. |
 | `hooks/saver.ts` | `/token-audit`, the startup check, `/savings`, `/pet`, `/wrapped`, `/handoff` and `/toggle`. Reads instruction files, settings, session transcripts (`~/.claude/projects/*/*.jsonl`) and the ledger. |
 | `hooks/setup.ts` | `/saver-setup`: merges `settings.json`, removes what older versions installed. |
+| `hooks/guards.ts` | The guards' decisions (trim, folder, read, re-read, secret) as plain functions; the mod calls them. |
 | `hooks/focus.ts` | Focus mode's pure helpers. |
 | `hooks/*.test.ts` | Tests, run with `claude plugin test .`; `hooks/fakeio.ts` is their in-memory file system. |
 | `.github/workflows/upstream.yml` | Daily job that fails if caveman, ponytail or graphify rename a flag file or marker that c-saver reads. |
