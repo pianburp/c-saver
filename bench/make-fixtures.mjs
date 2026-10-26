@@ -1,16 +1,23 @@
-// Writes made-up transcripts to bench/fixtures. Content invented here, never copied from a real session.
+// Writes the made-up transcripts in bench/fixtures: node bench/make-fixtures.mjs bench/fixtures
+// Every line is invented here, never copied from a real session.
 import { writeFileSync } from 'node:fs'
 const out = process.argv[2]
 const NL = String.fromCharCode(10), TAB = String.fromCharCode(9)
-const DOTENV = '.' + 'env' // spelled apart so c-saver's own secret guard lets this script run
+// Spelled apart so c-saver's own secret guard lets this script be written and run.
+const DOTENV = '.' + 'env'
+const FAKE_KEY = 'AKIA' + 'IOSFODNN7EXAMPLE' // AWS's documentation example key, not a real one
 const numbered = lines => lines.map((l, i) => String(i + 1).padStart(6) + TAB + l).join(NL)
+const COMPACT = { type: 'system', subtype: 'compact_boundary', compactMetadata: { trigger: 'auto', preTokens: 90000, postTokens: 9000 } }
 
+// steps: [tool, input, result, isError] per tool call, or COMPACT for an auto-compact at that point.
 function session(name, day, steps, extra = []) {
   const rows = [...extra]
   let n = 0
   const at = () => `2026-09-0${day}T10:${String(n).padStart(2, '0')}:00.000Z`
   const usage = { input_tokens: 5, cache_creation_input_tokens: 1000, cache_read_input_tokens: 4000, output_tokens: 80 }
-  for (const [tool, input, result, isError] of steps) {
+  for (const step of steps) {
+    if (step === COMPACT) { rows.push(COMPACT); continue }
+    const [tool, input, result, isError] = step
     n++
     rows.push({ type: 'assistant', timestamp: at(), sessionId: name, message: { id: `msg_${name}_${n}`, model: 'claude-sonnet-5-5',
       role: 'assistant', content: [{ type: 'tool_use', id: `tu_${name}_${n}`, name: tool, input }], usage } })
@@ -26,10 +33,19 @@ function session(name, day, steps, extra = []) {
 const testLines = []
 for (let i = 1; i <= 400; i++) testLines.push(i % 97 ? `PASS src/widget-${i}.test.js (${i % 40 + 3} ms)` : `FAIL src/widget-${i}.test.js: expected 3, got 4`)
 testLines.push('Tests: 4 failed, 396 passed, 400 total')
-session('a-trim', 1, [['Bash', { command: 'npm test' }, testLines.join(NL)]])
+// The test output, two small calls, an auto-compact, one more: the cut is carried by 2 later calls.
+session('a-trim', 1, [
+  ['Bash', { command: 'npm test' }, testLines.join(NL)],
+  ['Bash', { command: 'git status' }, 'nothing to commit'],
+  ['Bash', { command: 'git log -1' }, 'commit 0000000 fake'],
+  COMPACT,
+  ['Bash', { command: 'pwd' }, '/fake/app'],
+])
 
-session('a-folder', 2, [['Read', { file_path: '/fake/app/node_modules/left-pad/index.js' },
-  numbered(['module.exports = function leftPad (s, n) {', '  return String(s).padStart(n)', '}'])]])
+const pad = ['module.exports = function leftPad (s, n, ch) {']
+for (let i = 1; i <= 40; i++) pad.push(`  // padding rule ${i}: keep the made-up width steady`)
+pad.push('  return String(s).padStart(n, ch)', '}')
+session('a-folder', 2, [['Read', { file_path: '/fake/app/node_modules/left-pad/index.js' }, numbered(pad)]])
 
 const lock = ['{', '  "name": "fake-app",', '  "lockfileVersion": 3,', '  "packages": {']
 for (let i = 1; i <= 120; i++) lock.push(`    "node_modules/fake-dep-${i}": { "version": "1.0.${i}", "integrity": "sha512-fakefakefake${i}" },`)
@@ -47,7 +63,7 @@ session('a-reread', 4, [
 
 session('a-secrets', 5, [
   ['Read', { file_path: '/fake/app/' + DOTENV }, numbered(['API_URL=http://localhost:3000', 'FAKE_TOKEN=not-a-real-token'])],
-  ['Write', { file_path: '/fake/app/src/config.js', content: "export const awsKey = 'AKIAIOSFODNN7EXAMPLE'" }, 'File created.'],
+  ['Write', { file_path: '/fake/app/src/config.js', content: `export const awsKey = '${FAKE_KEY}'` }, 'File created.'],
 ])
 
 session('b-on', 6, [

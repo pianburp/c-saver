@@ -4,7 +4,8 @@ import { readFileSync } from 'node:fs'
 
 type Json = Record<string, any>
 
-export type Usage = { input: number; cache_write: number; cache_read: number; output: number }
+/** cache_write_1h: the part of cache_write written to the 1-hour cache, which bills higher. */
+export type Usage = { input: number; cache_write: number; cache_write_1h: number; cache_read: number; output: number }
 export type ApiCall = { model: string; usage: Usage; at?: string }
 /** `after`: API calls made before its result came back, so `calls.length - after` later calls carried it. */
 export type ToolCall = { id: string; name: string; input: Json; text: string; isError: boolean; after: number }
@@ -41,6 +42,7 @@ export function readTranscript(path: string): Transcript {
       t.calls.push({
         model: typeof msg.model === 'string' ? msg.model : '',
         usage: { input: u.input_tokens || 0, cache_write: u.cache_creation_input_tokens || 0,
+          cache_write_1h: u.cache_creation?.ephemeral_1h_input_tokens || 0,
           cache_read: u.cache_read_input_tokens || 0, output: u.output_tokens || 0 },
         at: typeof entry.timestamp === 'string' ? entry.timestamp : undefined,
       })

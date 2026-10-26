@@ -1,1 +1,3 @@
 .claude-plugin/types/
+# Counts from your own sessions: commit only after review
+bench/results.json
