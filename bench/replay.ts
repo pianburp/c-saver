@@ -1,10 +1,10 @@
 // Replays session transcripts through c-saver's own guards and counts what they would have cut. No model calls:
 // the same transcripts always give the same numbers. Prints and writes counts only, never transcript content.
-// Usage: node bench/replay.ts [--dir <folder of .jsonl>] [--out <results.json>]
-import { readdirSync, writeFileSync } from 'node:fs'
+// Usage: node bench/replay.ts [--dir <folder of .jsonl>] [--ctx <.statusline-ctx folder>] [--out <results.json>]
+import { existsSync, readdirSync, writeFileSync } from 'node:fs'
 import { registerHooks } from 'node:module'
 import { homedir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 
 import type { Seen } from '../hooks/guards.ts'
 import { readTranscript } from './transcript.ts'
@@ -104,11 +104,25 @@ function jsonlFiles(dir: string): string[] {
 
 const row = () => ({ events: 0, tokens: 0, usd: 0, carried_usd: 0 })
 
-export function replay(dir: string) {
+/**
+ * Why a session counts as recorded with c-saver on, or undefined when nothing shows it. No events is not "off":
+ * the mod may have been on with nothing to cut, so a session without a sign is "unknown", never "off".
+ * - note: a trim, block or focus-gate message of the mod in a tool result;
+ * - line: the mod's status line wrote line/<session id>.txt, which it does in every session it loads in;
+ * - tool: Claude called a tool the mod registers (focus mode's steps tool).
+ */
+function onSign(t: Transcript, id: string, ctx: string): 'note' | 'line' | 'tool' | undefined {
+  if (t.tools.some(c => recorded(c) || FOCUS_NOTE.test(c.text))) return 'note'
+  // shortcut: line/*.txt is never pruned by the mod, but /saver-setup --uninstall deletes it; sessions before then read as unknown
+  if (existsSync(join(ctx, 'line', `${id}.txt`))) return 'line'
+  if (t.tools.some(c => c.name.startsWith('mcp__c-saver__'))) return 'tool'
+}
+
+export function replay(dir: string, ctx: string) {
   const a = { sessions: 0, tool_result_tokens: 0, spent_usd: 0, unpriced_calls: 0,
     savers: { trim: row(), folder: row(), whole: row(), reread: row() } as Record<Saver, ReturnType<typeof row>>,
     secrets: { env_reads: 0, key_writes: 0 } }
-  const b = { sessions: 0, savers: { trim: { events: 0, tokens: 0 }, folder: { events: 0, tokens: 0, unsized: 0 },
+  const b = { sessions: 0, signs: { note: 0, line: 0, tool: 0 }, savers: { trim: { events: 0, tokens: 0 }, folder: { events: 0, tokens: 0, unsized: 0 },
     whole: { events: 0, tokens: 0 } } as Record<string, { events: number; tokens: number; unsized?: number }>,
     reread: 'not measured', secrets: { env_reads: 0, key_writes: 0 } }
   const projects = new Set<string>()
@@ -121,13 +135,16 @@ export function replay(dir: string) {
     skipped += t.skipped
     for (const [type, n] of Object.entries(t.unknown)) unknown[type] = (unknown[type] ?? 0) + n
     // shortcut: a subagent's transcript is replayed on its own; in the mod it shares the session's re-read memory
-    const sub = pathKey(file).split('/').includes('subagents')
+    const parts = pathKey(file).split('/')
+    const sub = parts.includes('subagents')
     if (!sub) { sessions += 1; projects.add(dirname(file)) }
     days.push(...t.calls.flatMap(c => (c.at ? [c.at.slice(0, 10)] : [])))
-    const marks = t.tools.map(recorded)
-    if (marks.some(Boolean) || t.tools.some(c => FOCUS_NOTE.test(c.text))) {
-      if (!sub) b.sessions += 1
-      for (const m of marks) {
+    // A subagent's transcript sits in <session id>/subagents/ and has the session's status line.
+    const id = sub ? parts[parts.indexOf('subagents') - 1] ?? '' : basename(file, '.jsonl')
+    const sign = onSign(t, id, ctx)
+    if (sign) {
+      if (!sub) { b.sessions += 1; b.signs[sign] += 1 }
+      for (const m of t.tools.map(recorded)) {
         if (!m) continue
         if (m.saver === 'env' || m.saver === 'keys') { b.secrets[m.saver === 'env' ? 'env_reads' : 'key_writes'] += 1; continue }
         const r = b.savers[m.saver]!
@@ -179,7 +196,16 @@ export function report(r: ReturnType<typeof replay>) {
       `${Object.keys(r.unknown_entries).length ? ` (${Object.entries(r.unknown_entries).sort((x, y) => y[1] - x[1])
         .map(([k, n]) => `${k} ${n}`).join(', ')})` : ''}.`,
     '',
-    `Group A (c-saver off): ${a.sessions} sessions`,
+    `Group B (c-saver on): ${r.group_b.sessions} sessions, events the mod recorded`,
+    `  how we know it was on: ${r.group_b.signs.note} by its notes, ${r.group_b.signs.line} by its status line, ` +
+      `${r.group_b.signs.tool} by its tools`,
+    `  ${'saver'.padEnd(16)} ${'events'.padStart(6)} ${'stated'.padStart(10)}`,
+    ...Object.entries(r.group_b.savers).map(([k, x]) => `  ${SAVERS[k as Saver].padEnd(16)} ${String(x.events).padStart(6)} ` +
+      `${(x.unsized === x.events && x.events ? '-' : fmt(x.tokens)).padStart(10)}${x.unsized ? `   ${x.unsized} with no size stated` : ''}`),
+    `  ${'re-read'.padEnd(16)} not measured: the mod leaves no note`,
+    `  ${'secret guard'.padEnd(16)} ${secretLine(r.group_b.secrets)}`,
+    '',
+    `Group A (no sign of c-saver, so on or off is unknown): ${a.sessions} sessions, what the guards would have cut`,
     `  ${'saver'.padEnd(16)} ${'events'.padStart(6)} ${'cut once'.padStart(10)}   share of tool output`,
     ...rows.map(([name, x]) => `  ${name.padEnd(16)} ${String(x.events).padStart(6)} ${fmt(x.tokens).padStart(10)}   ${pct(x.tokens)}`),
     `  ${'total'.padEnd(16)} ${''.padStart(6)} ${fmt(total.tokens).padStart(10)}   ${pct(total.tokens)} of ${fmt(a.tool_result_tokens)} tool-result tokens`,
@@ -187,22 +213,17 @@ export function report(r: ReturnType<typeof replay>) {
     `  ${'carried'.padEnd(16)} ${''.padStart(6)} ${usd(total.carried).padStart(10)}   estimate, at the cache-read price`,
     `  ${'secret guard'.padEnd(16)} ${secretLine(a.secrets)} (not counted as tokens)`,
     ...(a.unpriced_calls ? [`  ${a.unpriced_calls} calls on models missing from the price table are left out of the dollars.`] : []),
-    '',
-    `Group B (c-saver on): ${r.group_b.sessions} sessions, events the mod recorded`,
-    `  ${'saver'.padEnd(16)} ${'events'.padStart(6)} ${'stated'.padStart(10)}`,
-    ...Object.entries(r.group_b.savers).map(([k, x]) => `  ${SAVERS[k as Saver].padEnd(16)} ${String(x.events).padStart(6)} ` +
-      `${(x.unsized === x.events && x.events ? '-' : fmt(x.tokens)).padStart(10)}${x.unsized ? `   ${x.unsized} with no size stated` : ''}`),
-    `  ${'re-read'.padEnd(16)} not measured: the mod leaves no note`,
-    `  ${'secret guard'.padEnd(16)} ${secretLine(r.group_b.secrets)}`,
   ]
   return out.join('\n')
 }
 
 if (import.meta.main) {
   const arg = (name: string) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : undefined }
-  const dir = arg('--dir') ?? join(process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude'), 'projects')
+  const claude = process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude')
+  const dir = arg('--dir') ?? join(claude, 'projects')
+  const ctx = arg('--ctx') ?? join(claude, '.statusline-ctx')
   const out = arg('--out') ?? join(import.meta.dirname, 'results.json')
-  const r = replay(dir)
+  const r = replay(dir, ctx)
   writeFileSync(out, JSON.stringify(r, null, 2) + '\n')
   console.log(report(r))
 }

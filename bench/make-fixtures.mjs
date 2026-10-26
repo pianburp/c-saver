@@ -79,6 +79,11 @@ session('b-focus', 8, [
     '<tool_use_error>Focus mode: write your steps first with TaskCreate, then make this change again.</tool_use_error>', true],
 ])
 
+// c-saver on, known only because Claude called the steps tool the mod registers.
+session('b-tool', 9, [
+  ['mcp__c-saver__steps', { steps: [{ text: 'Make the fake change', status: 'in_progress' }] }, 'Showing 1 steps to the user.'],
+])
+
 // Reading a file that quotes the mod's notes mid-line is not a sign c-saver was on.
 session('clean', 7, [
   ['Bash', { command: 'ls' }, 'README.md' + NL + 'src'],

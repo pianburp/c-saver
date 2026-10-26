@@ -2,7 +2,7 @@
 // .mjs, not .test.ts: `claude plugin test .` runs the mod's tests, these run in plain Node.
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -11,13 +11,20 @@ const BENCH = import.meta.dirname
 const FIXTURES = join(BENCH, 'fixtures')
 
 /** Runs the CLI on the named fixtures alone; returns its stdout and results.json. */
-function run(...names) {
+const run = (...names) => runWith([], ...names)
+
+/** run, with the mod's status line file present for the `lines` session ids. Never reads the real ~/.claude. */
+function runWith(lines, ...names) {
   const dir = mkdtempSync(join(tmpdir(), 'c-saver-replay-'))
   const src = join(dir, 'sessions')
+  const ctx = join(dir, 'ctx')
   const out = join(dir, 'results.json')
   mkdirSync(src)
+  mkdirSync(join(ctx, 'line'), { recursive: true })
+  for (const id of lines) writeFileSync(join(ctx, 'line', `${id}.txt`), '')
   for (const n of names) copyFileSync(join(FIXTURES, `${n}.jsonl`), join(src, `${n}.jsonl`))
-  const p = spawnSync(process.execPath, ['--no-warnings', join(BENCH, 'replay.ts'), '--dir', src, '--out', out], { encoding: 'utf8' })
+  const p = spawnSync(process.execPath, ['--no-warnings', join(BENCH, 'replay.ts'), '--dir', src, '--ctx', ctx, '--out', out],
+    { encoding: 'utf8' })
   assert.equal(p.status, 0, p.stderr)
   return { stdout: p.stdout, json: readFileSync(out, 'utf8'), r: JSON.parse(readFileSync(out, 'utf8')) }
 }
@@ -54,24 +61,29 @@ test('the clean session gives zero', () => {
   assert.deepEqual(r.unknown_entries, { 'file-history-snapshot': 1 })
 })
 
-test('focus mode alone marks a session as recorded with c-saver on', () => {
-  const { r } = run('b-focus')
+test('a session counts as on only with a sign: a note, its status line file, or its tool', () => {
+  assert.deepEqual(run('b-focus').r.group_b.signs, { note: 1, line: 0, tool: 0 })
+  assert.deepEqual(run('b-tool').r.group_b.signs, { note: 0, line: 0, tool: 1 })
+  // No events is not "off": the same clean session is on once the mod's status line file shows it loaded
+  assert.equal(run('clean').r.group_b.sessions, 0)
+  const { r, stdout } = runWith(['clean'], 'clean')
+  assert.deepEqual(r.group_b.signs, { note: 0, line: 1, tool: 0 })
   assert.equal(r.group_a.sessions, 0)
-  assert.equal(r.group_b.sessions, 1)
+  assert.doesNotMatch(stdout, /c-saver off/)
 })
 
 test('sessions recorded with c-saver on are reported apart', () => {
   const { r, stdout } = run(...ALL)
-  assert.equal(r.sessions, 8)
+  assert.equal(r.sessions, 9)
   assert.equal(r.group_a.sessions, 6)
-  assert.equal(r.group_b.sessions, 2)
+  assert.equal(r.group_b.sessions, 3)
   assert.deepEqual(r.group_b.savers, { trim: { events: 1, tokens: 3100 }, folder: { events: 1, tokens: 0, unsized: 1 },
     whole: { events: 1, tokens: 12500 } })
   assert.deepEqual(r.group_b.secrets, { env_reads: 1, key_writes: 0 })
   // Group B's own tokens never reach Group A's totals
   assert.equal(Object.values(r.group_a.savers).reduce((t, x) => t + x.tokens, 0), 2058 + 514 + 2845 + 19)
-  assert.match(stdout, /Group A \(c-saver off\): 6 sessions/)
-  assert.match(stdout, /Group B \(c-saver on\): 2 sessions/)
+  assert.match(stdout, /Group A \(no sign of c-saver, so on or off is unknown\): 6 sessions/)
+  assert.match(stdout, /Group B \(c-saver on\): 3 sessions/)
 })
 
 test('privacy: no fixture content reaches stdout or results.json', () => {
