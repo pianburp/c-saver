@@ -1,0 +1,7 @@
+{"type":"assistant","message":{broken line
+{"type":"file-history-snapshot","snapshot":{}}
+{"type":"assistant","timestamp":"2026-09-07T10:01:00.000Z","sessionId":"clean","message":{"id":"msg_clean_1","model":"claude-sonnet-5-5","role":"assistant","content":[{"type":"tool_use","id":"tu_clean_1","name":"Bash","input":{"command":"ls"}}],"usage":{"input_tokens":5,"cache_creation_input_tokens":1000,"cache_read_input_tokens":4000,"output_tokens":80}}}
+{"type":"user","timestamp":"2026-09-07T10:01:00.000Z","sessionId":"clean","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tu_clean_1","content":"README.md\nsrc"}]}}
+{"type":"assistant","timestamp":"2026-09-07T10:02:00.000Z","sessionId":"clean","message":{"id":"msg_clean_2","model":"claude-sonnet-5-5","role":"assistant","content":[{"type":"tool_use","id":"tu_clean_2","name":"Read","input":{"file_path":"/fake/app/README.md"}}],"usage":{"input_tokens":5,"cache_creation_input_tokens":1000,"cache_read_input_tokens":4000,"output_tokens":80}}}
+{"type":"user","timestamp":"2026-09-07T10:02:00.000Z","sessionId":"clean","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tu_clean_2","content":"     1\t# fake-app\n     2\tA made-up app for the replay fixtures."}]}}
+{"type":"assistant","timestamp":"2026-09-07T10:03:00.000Z","sessionId":"clean","message":{"id":"msg_clean_3","model":"claude-sonnet-5-5","role":"assistant","content":[{"type":"text","text":"Done."}],"usage":{"input_tokens":5,"cache_creation_input_tokens":1000,"cache_read_input_tokens":4000,"output_tokens":80}}}

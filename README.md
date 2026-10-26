@@ -393,6 +393,7 @@ For ponytail and caveman: `/saver-setup --yes --auto-update`.
 | `hooks/guards.ts` | The guards' decisions (trim, folder, read, re-read, secret) as plain functions; the mod calls them. |
 | `hooks/focus.ts` | Focus mode's pure helpers. |
 | `hooks/*.test.ts` | Tests, run with `claude plugin test .`; `hooks/fakeio.ts` is their in-memory file system. |
+| `bench/` | Dev tooling, not loaded by the mod: `transcript.ts` reads one session transcript; `make-fixtures.mjs` writes the made-up sessions in `fixtures/`. |
 | `.github/workflows/upstream.yml` | Daily job that fails if caveman, ponytail or graphify rename a flag file or marker that c-saver reads. |
 
 Token counts are `chars / 4`, the same approximation graphify and most tools use. Exact numbers come only from transcript `usage` fields.
