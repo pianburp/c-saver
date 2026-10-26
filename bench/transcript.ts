@@ -13,7 +13,7 @@ export type Transcript = {
   calls: ApiCall[]; tools: ToolCall[]
   compacts: number[] // API calls made before each compaction
   skipped: number // lines that are not a JSON object
-  unknown: number // entries of a type the reader does not read
+  unknown: Record<string, number> // entries per type the reader does not read
 }
 
 const KNOWN = new Set(['user', 'assistant', 'system', 'summary'])
@@ -24,7 +24,7 @@ const resultText = (content: unknown) =>
     : typeof content === 'string' ? content : ''
 
 export function readTranscript(path: string): Transcript {
-  const t: Transcript = { calls: [], tools: [], compacts: [], skipped: 0, unknown: 0 }
+  const t: Transcript = { calls: [], tools: [], compacts: [], skipped: 0, unknown: {} }
   const seen = new Set<unknown>() // usage repeats on every content block of one message
   const byId = new Map<string, ToolCall>()
   for (const line of readFileSync(path, 'utf8').split('\n')) {
@@ -32,7 +32,11 @@ export function readTranscript(path: string): Transcript {
     let entry: Json
     try { entry = JSON.parse(line) } catch { t.skipped += 1; continue }
     if (!entry || typeof entry !== 'object' || Array.isArray(entry)) { t.skipped += 1; continue }
-    if (!KNOWN.has(entry.type)) { t.unknown += 1; continue }
+    if (!KNOWN.has(entry.type)) {
+      const type = typeof entry.type === 'string' ? entry.type.slice(0, 40) : '?'
+      t.unknown[type] = (t.unknown[type] ?? 0) + 1
+      continue
+    }
     if (entry.compactMetadata && typeof entry.compactMetadata === 'object') t.compacts.push(t.calls.length)
     const msg = entry.message
     if (!msg || typeof msg !== 'object') continue

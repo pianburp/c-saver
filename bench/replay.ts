@@ -26,10 +26,13 @@ const CACHE_READ = 0.1 // cache reads bill at 10% of input, as CACHE_READ_PRICE 
 // Cache writes bill at 1.25x input for the 5-minute cache, 2x for 1 hour (Anthropic's prompt caching prices).
 const WRITE_5M = 1.25
 const WRITE_1H = 2
-// The mod's own notes in a tool result, as sessionStats in hooks/saver.ts reads them: c-saver was on.
-const TRIM_NOTE = /(?:claude|c)-saver: trimmed ~([\d.]+)([kM]?) tokens/
-const SKIP_NOTE = /(?:claude|c)-saver: skipped (?:[^~\n]*~([\d.]+)([kM]?) tokens|[\w.-]+\/, a generated folder)/
-const SECRET_NOTE = /^Blocked: (?:"[^"]*" holds live secrets|this write hardcodes)/
+// The mod's own notes in a tool result: c-saver was on. Anchored where the mod puts them (a deny is the whole result,
+// in core's <tool_use_error> wrapper), so reading c-saver's own source or tests is not taken for one.
+const DENY = '^(?:<tool_use_error>)?'
+const TRIM_NOTE = /^\[(?:claude|c)-saver: trimmed ~([\d.]+)([kM]?) tokens/m
+const SKIP_NOTE = new RegExp(`${DENY}(?:claude|c)-saver: skipped (?:[^~\\n]*~([\\d.]+)([kM]?) tokens|[\\w.-]+/, a generated folder)`)
+const SECRET_NOTE = new RegExp(`${DENY}Blocked: (?:"[^"]*" holds live secrets|this write hardcodes)`)
+const FOCUS_NOTE = new RegExp(`${DENY}Focus mode: write your steps first`) // no saving, but the mod was on
 const SIZE: Record<string, number> = { '': 1, k: 1e3, M: 1e6 }
 const SAVERS = { trim: 'output trim', folder: 'folder guard', whole: 'whole-file read', reread: 're-read' }
 type Saver = keyof typeof SAVERS
@@ -112,17 +115,17 @@ export function replay(dir: string) {
   const days: string[] = []
   let sessions = 0
   let skipped = 0
-  let unknown = 0
+  const unknown: Record<string, number> = {} // entry type names only, never their content
   for (const file of jsonlFiles(dir)) {
     const t = readTranscript(file)
     skipped += t.skipped
-    unknown += t.unknown
+    for (const [type, n] of Object.entries(t.unknown)) unknown[type] = (unknown[type] ?? 0) + n
     // shortcut: a subagent's transcript is replayed on its own; in the mod it shares the session's re-read memory
     const sub = pathKey(file).split('/').includes('subagents')
     if (!sub) { sessions += 1; projects.add(dirname(file)) }
     days.push(...t.calls.flatMap(c => (c.at ? [c.at.slice(0, 10)] : [])))
     const marks = t.tools.map(recorded)
-    if (marks.some(Boolean)) {
+    if (marks.some(Boolean) || t.tools.some(c => FOCUS_NOTE.test(c.text))) {
       if (!sub) b.sessions += 1
       for (const m of marks) {
         if (!m) continue
@@ -172,7 +175,9 @@ export function report(r: ReturnType<typeof replay>) {
   const out = [
     `c-saver replay · ${r.sessions} sessions · ${r.projects} projects · ${r.from ?? '-'} to ${r.to ?? '-'}`,
     'Token counts: chars / 4. No model calls.',
-    `Skipped: ${r.skipped_lines} broken lines, ${r.unknown_entries} entries of other types.`,
+    `Skipped: ${r.skipped_lines} broken lines, ${Object.values(r.unknown_entries).reduce((t, n) => t + n, 0)} entries of other types` +
+      `${Object.keys(r.unknown_entries).length ? ` (${Object.entries(r.unknown_entries).sort((x, y) => y[1] - x[1])
+        .map(([k, n]) => `${k} ${n}`).join(', ')})` : ''}.`,
     '',
     `Group A (c-saver off): ${a.sessions} sessions`,
     `  ${'saver'.padEnd(16)} ${'events'.padStart(6)} ${'cut once'.padStart(10)}   share of tool output`,

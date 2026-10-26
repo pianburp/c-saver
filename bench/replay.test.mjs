@@ -1,4 +1,4 @@
-// The replay through its CLI on the made-up fixtures: node --test bench/replay.test.mjs
+// The replay through its CLI on the made-up fixtures: node --test bench/
 // .mjs, not .test.ts: `claude plugin test .` runs the mod's tests, these run in plain Node.
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
@@ -51,20 +51,27 @@ test('the clean session gives zero', () => {
   assert.equal(r.group_a.sessions, 1)
   assert.equal(r.group_b.sessions, 0)
   assert.equal(r.skipped_lines, 1)
-  assert.equal(r.unknown_entries, 1)
+  assert.deepEqual(r.unknown_entries, { 'file-history-snapshot': 1 })
+})
+
+test('focus mode alone marks a session as recorded with c-saver on', () => {
+  const { r } = run('b-focus')
+  assert.equal(r.group_a.sessions, 0)
+  assert.equal(r.group_b.sessions, 1)
 })
 
 test('sessions recorded with c-saver on are reported apart', () => {
   const { r, stdout } = run(...ALL)
-  assert.equal(r.sessions, 7)
+  assert.equal(r.sessions, 8)
   assert.equal(r.group_a.sessions, 6)
-  assert.equal(r.group_b.sessions, 1)
+  assert.equal(r.group_b.sessions, 2)
   assert.deepEqual(r.group_b.savers, { trim: { events: 1, tokens: 3100 }, folder: { events: 1, tokens: 0, unsized: 1 },
     whole: { events: 1, tokens: 12500 } })
+  assert.deepEqual(r.group_b.secrets, { env_reads: 1, key_writes: 0 })
   // Group B's own tokens never reach Group A's totals
   assert.equal(Object.values(r.group_a.savers).reduce((t, x) => t + x.tokens, 0), 2058 + 514 + 2845 + 19)
   assert.match(stdout, /Group A \(c-saver off\): 6 sessions/)
-  assert.match(stdout, /Group B \(c-saver on\): 1 sessions/)
+  assert.match(stdout, /Group B \(c-saver on\): 2 sessions/)
 })
 
 test('privacy: no fixture content reaches stdout or results.json', () => {

@@ -68,11 +68,20 @@ session('a-secrets', 5, [
 
 session('b-on', 6, [
   ['Bash', { command: 'npm run build' }, 'building fake-app' + NL + '[c-saver: trimmed ~3.1k tokens from the middle. Full output: /fake/out/0.txt (Grep it, or Read it with offset and limit). Next time use quiet flags or pipe through tail or grep.]' + NL + 'build done'],
-  ['Read', { file_path: '/fake/app/dist/bundle.js' }, "c-saver: skipped dist/, a generated folder. Read the source or the package's docs instead.", true],
+  ['Read', { file_path: '/fake/app/dist/bundle.js' }, "<tool_use_error>c-saver: skipped dist/, a generated folder. Read the source or the package's docs instead.</tool_use_error>", true],
   ['Read', { file_path: '/fake/app/yarn.lock' }, 'c-saver: skipped ~12.5k tokens, a whole read of yarn.lock. Grep it for what you need, or Read it with offset and limit.', true],
+  ['Read', { file_path: '/fake/app/' + DOTENV }, `<tool_use_error>Blocked: "${DOTENV}" holds live secrets. Read the code default instead.</tool_use_error>`, true],
 ])
 
+// c-saver on, but its only trace is focus mode's step gate.
+session('b-focus', 8, [
+  ['Edit', { file_path: '/fake/app/src/app.js', old_string: 'a', new_string: 'b' },
+    '<tool_use_error>Focus mode: write your steps first with TaskCreate, then make this change again.</tool_use_error>', true],
+])
+
+// Reading a file that quotes the mod's notes mid-line is not a sign c-saver was on.
 session('clean', 7, [
   ['Bash', { command: 'ls' }, 'README.md' + NL + 'src'],
-  ['Read', { file_path: '/fake/app/README.md' }, numbered(['# fake-app', 'A made-up app for the replay fixtures.'])],
-], ['{"type":"assistant","message":{broken line', JSON.stringify({ type: 'file-history-snapshot', snapshot: {} })])
+  ['Read', { file_path: '/fake/app/README.md' }, numbered(['# fake-app', 'A made-up app for the replay fixtures.',
+    'Its notes look like "c-saver: skipped ~12.5k tokens" and "[c-saver: trimmed ~3.1k tokens".'])],
+],['{"type":"assistant","message":{broken line', JSON.stringify({ type: 'file-history-snapshot', snapshot: {} })])
