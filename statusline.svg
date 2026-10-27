@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="132" viewBox="0 0 680 132" role="img" aria-labelledby="t d">
+<title id="t">c-saver status line</title>
+<desc id="d">Two rows under the Claude Code prompt: model, effort and estimated dollars saved; then context used 31%, 5-hour limit at 63% and on pace to run out at 11:40a, weekly limit at 91%, and 52 minutes left on the prompt cache.</desc>
+<rect width="680" height="132" rx="8" fill="#1e1e1e"/>
+<g font-family="ui-monospace, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" xml:space="preserve">
+<text y="40"><tspan x="24" fill="#d7875f">✻</tspan><tspan x="42" fill="#d4d4d4">Opus 5.5 · hi ·</tspan><tspan x="186" fill="#87d787">saved ~$0.43</tspan></text>
+<text y="68" fill="#8a8a8a"><tspan x="24">⎿ ctx</tspan><tspan x="141" fill="#87d787">31%</tspan><tspan x="177">·</tspan><tspan x="195">5h</tspan><tspan x="222" fill="#d7af5f">63%</tspan><tspan x="258">12:51p</tspan><tspan x="321" fill="#d75f5f">full 11:40a</tspan><tspan x="429">·</tspan><tspan x="447">7d</tspan><tspan x="474" fill="#d75f5f">91%</tspan><tspan x="510">Thu</tspan><tspan x="546">·</tspan><tspan x="564">● 52m</tspan></text>
+</g>
+<rect x="78" y="56" width="16" height="15" fill="#d7875f"/>
+<rect x="96" y="56" width="34" height="15" fill="#3a3a3a"/>
+<g stroke="#4a4a4a" stroke-width="1">
+<path d="M78 82h91M195 82h237M447 82h90M564 82h45"/>
+</g>
+<g font-family="ui-monospace, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12" fill="#8a8a8a" text-anchor="middle">
+<text x="123" y="102">context</text>
+<text x="313" y="102">5h limit, runs out 11:40a</text>
+<text x="492" y="102">weekly limit</text>
+<text x="586" y="102">cache left</text>
+</g>
+</svg>
