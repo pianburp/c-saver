@@ -1,11 +1,14 @@
 {
   "name": "c-saver",
   "version": "2.0.0",
-  "description": "Spend fewer tokens in Claude Code. One mod, no Python: a status line with context, limits, cache countdown and pet; it trims long shell output, blocks generated folders, huge reads, repeat reads and secrets, and answers /savings, /pet, /toggle, /wrapped, /token-audit and /handoff. /saver-setup adds auto-compact at 50% and the .env deny rules.",
+  "description": "Keep Claude Code sessions lean: trims long shell output, blocks wasteful reads and .env access, and shows context, usage limits and prompt cache time on the status line. Includes /savings and /token-audit.",
   "author": { "name": "pianburp", "url": "https://github.com/pianburp" },
   "homepage": "https://github.com/pianburp/c-saver",
   "repository": "https://github.com/pianburp/c-saver",
+  "documentationUrl": "https://github.com/pianburp/c-saver/blob/main/docs/reference.md",
+  "supportUrl": "https://github.com/pianburp/c-saver/issues",
+  "privacyPolicyUrl": "https://github.com/pianburp/c-saver#privacy",
   "license": "MIT",
   "types": "./types/index.d.ts",
-  "keywords":["tokens", "statusline", "context", "cost", "compact"]
+  "keywords": ["tokens", "statusline", "context", "cost", "compact", "usage-limits", "prompt-cache"]
 }

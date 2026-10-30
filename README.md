@@ -4,13 +4,14 @@
 ![Claude Code: v2.1.287+](https://img.shields.io/badge/Claude_Code-v2.1.287%2B-brightblue.svg)
 ![Dependencies: none](https://img.shields.io/badge/dependencies-none-brightgreen.svg)
 
-Spend fewer tokens in [Claude Code](https://claude.com/claude-code) without changing how you work.
+**Keep Claude Code sessions lean, and see what they cost while you work.**
 
 ![c-saver status line: context used, usage limits with a run-out time, prompt cache left](statusline.svg)
 
-Every API call re-sends your CLAUDE.md, tool schemas and the whole conversation.
-c-saver cuts noisy tool output before Claude reads it, blocks reads that only waste context,
-and warns you on the status line before a session gets expensive. One plugin, no dependencies, no daemon.
+Every API call re-sends your CLAUDE.md, tool schemas and the whole conversation, so one noisy command is paid for again on every later call.
+c-saver stops that waste before it enters context: it trims long shell output, blocks reads of generated files, and shows context, limits and cache time on the status line.
+
+It runs inside [Claude Code](https://claude.com/claude-code) as a single plugin, with no dependencies and no daemon. Every feature has an off switch.
 
 ## Install
 
@@ -53,6 +54,28 @@ node bench/replay.ts
 
 Also: focus mode, `/handoff`, `/wrapped`, a pet, and an on/off switch for everything.
 See the [full reference](docs/reference.md).
+
+## What it changes
+
+c-saver changes what Claude sees and what you see, so here is exactly how. Use `/toggle` to switch off any of its mid-session features.
+
+- **Tool calls:** guards can block a call or shorten its output, and Claude is told when they do.
+- **Focus mode (on by default):** hides tool calls and Claude's in-between text, and shows a step list instead. `ctrl+o` shows everything. Claude's first edit or command in a task is refused once until it writes its steps.
+- **`settings.json`:** changed only by `/saver-setup --yes`, which backs it up first and sets auto-compact and three `.env` deny rules. The auto-compact variable is undocumented, so it may change.
+- **Third-party software:** installed only if you pass `--with-plugins`, `--graphify` or `--all`. Read those projects first, because they run their own code.
+
+## Privacy
+
+c-saver has no telemetry, and its own code makes no network requests. The only network use is the third-party install flags above.
+
+It reads session transcripts and instruction files on your machine, and keeps its state in `~/.claude/.statusline-ctx/`.
+That folder holds the full text of trimmed shell output (last 50 outputs), which can include anything a command printed.
+`/saver-setup --yes --uninstall` deletes the folder.
+
+## Support
+
+Report bugs and ask questions in [GitHub issues](https://github.com/pianburp/c-saver/issues).
+Include your OS, Claude Code version, and the output of `/toggle`.
 
 ## License
 
