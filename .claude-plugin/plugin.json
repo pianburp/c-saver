@@ -1,6 +1,6 @@
 {
   "name": "c-saver",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Keep Claude Code sessions lean: trims long shell output, blocks wasteful reads and .env access, and shows context, usage limits and prompt cache time on the status line. Includes /savings and /token-audit.",
   "author": { "name": "pianburp", "url": "https://github.com/pianburp" },
   "homepage": "https://github.com/pianburp/c-saver",
