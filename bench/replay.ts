@@ -29,8 +29,8 @@ const WRITE_1H = 2
 // The mod's own notes in a tool result: c-saver was on. Anchored where the mod puts them (a deny is the whole result,
 // in core's <tool_use_error> wrapper), so reading c-saver's own source or tests is not taken for one.
 const DENY = '^(?:<tool_use_error>)?'
-const TRIM_NOTE = /^\[(?:claude|c)-saver: trimmed ~([\d.]+)([kM]?) tokens/m
-const SKIP_NOTE = new RegExp(`${DENY}(?:claude|c)-saver: skipped (?:[^~\\n]*~([\\d.]+)([kM]?) tokens|[\\w.-]+/, a generated folder)`)
+const TRIM_NOTE = /^\[c-saver: trimmed ~([\d.]+)([kM]?) tokens/m
+const SKIP_NOTE = new RegExp(`${DENY}c-saver: skipped (?:[^~\\n]*~([\\d.]+)([kM]?) tokens|[\\w.-]+/, a generated folder)`)
 const SECRET_NOTE = new RegExp(`${DENY}Blocked: (?:"[^"]*" holds live secrets|this write hardcodes)`)
 const FOCUS_NOTE = new RegExp(`${DENY}Focus mode: write your steps first`) // no saving, but the mod was on
 const SIZE: Record<string, number> = { '': 1, k: 1e3, M: 1e6 }

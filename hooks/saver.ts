@@ -534,10 +534,10 @@ export async function sessionStats(io: Io, path: string): Promise<Stats> {
           const useId = String(block.tool_use_id ?? '')
           const text = resultText(block.content)
           results.set(useId, tokens(text))
-          const cut = /(?:claude|c)-saver: trimmed ~([\d.]+)([kM]?) tokens/.exec(text)
+          const cut = /c-saver: trimmed ~([\d.]+)([kM]?) tokens/.exec(text)
           if (cut) s.trimmed.push(Number(cut[1]) * SIZE[cut[2] ?? '']!) // the mod cut a long shell output before Claude read it
           // The mod's blocks: a sized one ("skipped ~12.5k tokens"), or a generated folder priced at the average read.
-          const hit = /(?:claude|c)-saver: skipped (?:[^~\n]*~([\d.]+)([kM]?) tokens|[\w.-]+\/, a generated folder)/.exec(text)
+          const hit = /c-saver: skipped (?:[^~\n]*~([\d.]+)([kM]?) tokens|[\w.-]+\/, a generated folder)/.exec(text)
           if (hit) s.denied.push(hit[1] ? Number(hit[1]) * SIZE[hit[2] ?? '']! : null)
           else if (toolNames.get(useId) === 'Read' && /^Permission to read .+ has been denied/.test(text))
             s.denied.push(null) // your own deny rule: size unknown, priced at the average read
