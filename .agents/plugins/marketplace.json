@@ -1,0 +1,12 @@
+{
+  "name": "c-saver-local",
+  "interface": { "displayName": "c-saver" },
+  "plugins": [
+    {
+      "name": "c-saver",
+      "source": { "source": "local", "path": "./" },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+      "category": "Productivity"
+    }
+  ]
+}

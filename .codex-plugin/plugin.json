@@ -1,0 +1,21 @@
+{
+  "name": "c-saver",
+  "version": "2.1.0",
+  "description": "Audit Codex project instructions and opt into shell read guardrails.",
+  "author": { "name": "pianburp", "url": "https://github.com/pianburp" },
+  "homepage": "https://github.com/pianburp/c-saver",
+  "repository": "https://github.com/pianburp/c-saver",
+  "license": "MIT",
+  "skills": "./codex/skills/",
+  "hooks": "./codex/hooks.json",
+  "interface": {
+    "displayName": "c-saver",
+    "shortDescription": "Audit Codex context",
+    "longDescription": "Estimate the context cost of project instructions, save and retrieve a worktree handoff, and opt into guards for supported shell reads. Runs locally with Node.js 24 or later.",
+    "developerName": "pianburp",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write"],
+    "composerIcon": "./assets/c-saver.png",
+    "logo": "./assets/c-saver.png"
+  }
+}

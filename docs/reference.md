@@ -1,15 +1,19 @@
-# c-saver reference
+# c-saver reference for Claude Code
 
 Everything c-saver does, in detail. Start with the [README](../README.md).
 
+For Codex setup and usage, see the [Codex guide](codex.md).
+
 ## Proof
+
+![Claude Code replay chart showing 159,042 of 986,797 tool-result tokens cut](../proof.svg)
 
 `bench/replay.ts` replays real Claude Code transcripts through c-saver's own guards and counts what they would have cut.
 No model is called, so the same transcripts always give the same numbers.
 
 Measured: 119 sessions across 14 projects, 2026-09-28 to 2026-10-27, from one person's machine.
 The table covers the 45 sessions with no sign of c-saver (no note from the mod, no status line file, no use of its tools).
-The other 74 had c-saver on, so their cut output is not in the transcript to measure.
+The other 74 had c-saver on, so their cut output is not in the transcript to measure. The mod's notes in those sessions record 137 output trims cutting about 208,000 tokens.
 
 | Saver | Events | Tokens cut once | Share of tool output |
 |-------|-------:|----------------:|---------------------:|
@@ -68,6 +72,8 @@ Their percentages are the projects' own published claims, not c-saver's: see the
 [`/savings`](#savings) applies them to your session's tokens and marks the result `~` (estimated).
 
 ## Status line
+
+![Claude Code status line showing context used, usage limits, and prompt cache time](../statusline.svg)
 
 ```
 ✻ Opus 5.5 · hi · pony full + cave · saved ~$0.43
@@ -336,7 +342,7 @@ The tools can't do these for you:
 
 ## Install
 
-Install the plugin (see the [README](../README.md#install)). The status line, guards and commands need nothing else.
+Install the plugin using the [Claude Code instructions](../README.md#claude-code). The status line, guards and commands need nothing else.
 
 `/saver-setup` handles `settings.json`. Without `--yes` it only lists the changes. Flags combine, e.g. `/saver-setup --yes --all --orchestrate`:
 
@@ -382,6 +388,10 @@ For ponytail and caveman: `/saver-setup --yes --auto-update`.
 - **`cave no plugin`:** caveman is installed as plain skills (e.g. `npx skills add`), which write no mode flag.
   Run `/saver-setup --yes --with-plugins`, then delete the `cave*` folders it lists from `~/.claude/skills/`.
 - **Boxes or `?` instead of `✻ ⎿ █ ▐▛`:** your font lacks the glyphs. Use Cascadia, Menlo, JetBrains Mono or DejaVu Sans Mono.
+
+## Privacy
+
+The Claude Code plugin has no telemetry and its own code makes no network requests. Optional third-party installation flags can use the network. c-saver reads local session transcripts and instruction files. Its state directory, `~/.claude/.statusline-ctx/`, can retain the full text of the last 50 trimmed outputs. `/saver-setup --yes --uninstall` removes the directory.
 
 ## Settings
 

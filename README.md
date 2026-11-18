@@ -1,21 +1,14 @@
 # c-saver
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![Claude Code: v2.1.287+](https://img.shields.io/badge/Claude_Code-v2.1.287%2B-brightblue.svg)
-![Dependencies: none](https://img.shields.io/badge/dependencies-none-brightgreen.svg)
 
-**Keep Claude Code sessions lean, and see what they cost while you work.**
-
-![c-saver status line: context used, usage limits with a run-out time, prompt cache left](statusline.svg)
-
-Every API call re-sends your CLAUDE.md, tool schemas and the whole conversation, so one noisy command is paid for again on every later call.
-c-saver stops that waste before it enters context: it trims long shell output, blocks reads of generated files, and shows context, limits and cache time on the status line.
-
-It runs inside [Claude Code](https://claude.com/claude-code) as a single plugin, with no dependencies and no daemon. Every feature has an off switch.
+**Keep coding sessions lean with c-saver.** c-saver keeps noisy file reads out of the conversation, helps you see what takes up context, and saves handoffs between sessions. It runs as a plugin in Claude Code and Codex.
 
 ## Install
 
-In Claude Code:
+### Claude Code
+
+Run these commands in Claude Code.
 
 ```
 /plugin marketplace add pianburp/c-saver
@@ -23,59 +16,39 @@ In Claude Code:
 /saver-setup --yes
 ```
 
-Restart Claude Code. Run `/saver-setup` without `--yes` first to see what it changes in `settings.json`.
+Restart Claude Code. Run `/saver-setup` without `--yes` to preview the settings changes. The plugin includes custom output trimming, a status line, and a session savings report. [Claude Code guide](docs/reference.md)
 
-## What it saves
+![c-saver status line in Claude Code showing context, usage limits, and prompt cache time](statusline.svg)
 
-![Bar chart: c-saver would have cut 159k of 987k tool-result tokens (16%). Output trim 116.5k, whole-file reads 25.2k, folder guard 15.3k, re-reads 2.0k.](proof.svg)
+### Codex
 
-119 real sessions (14 projects, one month) were replayed through c-saver's guards, with no model calls.
-The chart covers the 45 sessions that showed no sign of c-saver.
-In the 74 that ran with it, the mod's own notes record 137 output trims cutting 208k tokens.
-
-A cut token also stays out of every later call, so the real saving is larger than the chart.
-Limits: one person's sessions, counted as `chars / 4`. [Method and full numbers](docs/reference.md#proof).
-
-Measure your own sessions. It prints counts only, never their content:
+Use Node.js 24+ and a Codex CLI with `codex plugin` support. Run these commands from the root of the c-saver checkout.
 
 ```sh
-node bench/replay.ts
+codex plugin marketplace add .
+codex plugin add c-saver@c-saver-local
+codex plugin list --marketplace c-saver-local
 ```
 
-## What you get
+Start a fresh Codex session and ask it to use the `c-saver-audit` skill. To enable shell read guards, launch Codex with `C_SAVER_CODEX_GUARDS=1` and review and trust the bundled hook in `/hooks`.
 
-- **Status line:** context, usage limits with a run-out forecast, and a prompt cache countdown. It tells you when to `/compact` or `/clear`.
-- **Output trim:** a shell output over 2k tokens is cut to its head, error lines and tail.
-- **Read guards:** no reads of `node_modules`, build folders, lockfiles, minified or huge files, or unchanged files read twice.
-- **Secret guard:** blocks `.env` reads and API keys written into code.
-- **Auto-compact at 50%** instead of near full.
-- **`/token-audit`:** lists what loads before you type and proposes cuts.
-- **`/savings`:** what each saver saved this session.
+```powershell
+$env:C_SAVER_CODEX_GUARDS = '1'
+codex
+```
 
-Also: focus mode, `/handoff`, `/wrapped`, a pet, and an on/off switch for everything.
-See the [full reference](docs/reference.md).
+In Bash or Zsh, run `C_SAVER_CODEX_GUARDS=1 codex`. The plugin also includes offline usage reporting and worktree handoffs. [Codex guide](docs/codex.md)
 
-## What it changes
+## What c-saver saves
 
-c-saver changes what Claude sees and what you see, so here is exactly how. Use `/toggle` to switch off any of its mid-session features.
+- In a replay of 45 Claude Code sessions, c-saver would have removed about **159,000 of 987,000 tool-result tokens** (16%), using an estimate of one token per four characters. [Claude Code replay](docs/reference.md#proof)
+- In two paired Codex CLI fixture tests, c-saver reduced the next request's tool-result text from **1,395 to 40 tokens** for a generated build log and from **12,022 to 40 tokens** for a large whole-file read. These counts cover the individual reads. [Codex benchmark](docs/codex-verification.md#paired-guard-benchmark)
 
-- **Tool calls:** guards can block a call or shorten its output, and Claude is told when they do.
-- **Focus mode (on by default):** hides tool calls and Claude's in-between text, and shows a step list instead. `ctrl+o` shows everything. Claude's first edit or command in a task is refused once until it writes its steps.
-- **`settings.json`:** changed only by `/saver-setup --yes`, which backs it up first and sets auto-compact and three `.env` deny rules. The auto-compact variable is undocumented, so it may change.
-- **Third-party software:** installed only if you pass `--with-plugins`, `--graphify` or `--all`. Read those projects first, because they run their own code.
-
-## Privacy
-
-c-saver has no telemetry, and its own code makes no network requests. The only network use is the third-party install flags above.
-
-It reads session transcripts and instruction files on your machine, and keeps its state in `~/.claude/.statusline-ctx/`.
-That folder holds the full text of trimmed shell output (last 50 outputs), which can include anything a command printed.
-`/saver-setup --yes --uninstall` deletes the folder.
+![Claude Code replay chart showing how c-saver would remove about 159,000 tool-result tokens](proof.svg)
 
 ## Support
 
-Report bugs and ask questions in [GitHub issues](https://github.com/pianburp/c-saver/issues).
-Include your OS, Claude Code version, and the output of `/toggle`.
+Report bugs in [GitHub issues](https://github.com/pianburp/c-saver/issues). Include your OS, client version, and c-saver version.
 
 ## License
 
